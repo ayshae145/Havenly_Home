@@ -1092,10 +1092,25 @@ async function loadSavedMaxConversations() {
       openSavedMaxConversation(conversation.id);
     });
 
+    const renameButton = document.createElement("button");
+    renameButton.type = "button";
+    renameButton.className = "saved-max-rename";
+    renameButton.textContent = "✏️";
+renameButton.title = "Rename conversation";
+renameButton.setAttribute("aria-label", "Rename conversation");
+
+    renameButton.addEventListener("click", () => {
+  renameSavedMaxConversation(
+    conversation.id,
+    conversation.title,
+    row
+  );
+});
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "saved-max-delete";
-    deleteButton.textContent = "Delete";
+    deleteButton.textContent = "🗑️";
+    deleteButton.title = "Delete conversation"; 
     deleteButton.setAttribute(
       "aria-label",
       `Delete ${conversation.title}`
@@ -1105,7 +1120,7 @@ async function loadSavedMaxConversations() {
       deleteSavedMaxConversation(conversation.id);
     });
 
-    row.append(openButton, deleteButton);
+    row.append(openButton, renameButton, deleteButton);
     container.appendChild(row);
   });
 }
@@ -1178,7 +1193,13 @@ async function saveMaxConversation() {
 
   await loadSavedMaxConversations();
 
-  alert("Conversation saved successfully!");
+  const saveButton = document.getElementById("saveMaxConversation");
+
+  saveButton.textContent = "Saved ✓";
+
+  setTimeout(() => {
+    saveButton.textContent = "Save Conversation";
+  }, 1500);
 }
 
 async function openSavedMaxConversation(conversationId) {
@@ -1223,6 +1244,117 @@ async function openSavedMaxConversation(conversationId) {
       message.content,
       message.role === "assistant" ? "max" : "user"
     );
+  });
+}
+
+async function renameSavedMaxConversation(
+  conversationId,
+  currentTitle,
+  row
+) {
+  const titleButton = row.querySelector(".saved-max-open");
+  const renameButton = row.querySelector(".saved-max-rename");
+
+  if (!titleButton || row.querySelector(".saved-max-input")) {
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "saved-max-input";
+  input.value = currentTitle;
+  input.maxLength = 100;
+  input.setAttribute("aria-label", "Conversation name");
+
+  // Replace the title with an editable input.
+  titleButton.replaceWith(input);
+
+  input.focus();
+  input.select();
+
+  let finished = false;
+
+  function restoreTitle(title) {
+    input.replaceWith(titleButton);
+    titleButton.textContent = title;
+  }
+
+  function cancelRename() {
+    if (finished) return;
+
+    finished = true;
+    restoreTitle(currentTitle);
+  }
+
+  async function saveRename() {
+    if (finished) return;
+
+    const newTitle = input.value.trim();
+
+    if (!newTitle) {
+      input.focus();
+      return;
+    }
+
+    if (newTitle === currentTitle) {
+      cancelRename();
+      return;
+    }
+
+    finished = true;
+    input.disabled = true;
+    renameButton.disabled = true;
+
+    const { data: { user }, error: userError } =
+      await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+      input.disabled = false;
+      renameButton.disabled = false;
+      finished = false;
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("max_conversations")
+      .update({
+        title: newTitle,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", conversationId)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Error renaming conversation:", error);
+
+      input.disabled = false;
+      renameButton.disabled = false;
+      finished = false;
+      return;
+    }
+
+    restoreTitle(newTitle);
+    renameButton.disabled = false;
+
+    await loadSavedMaxConversations();
+  }
+
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveRename();
+    }
+
+    if (event.key === "Escape") {
+      cancelRename();
+    }
+  });
+
+  // Clicking outside the input saves the name.
+  input.addEventListener("blur", () => {
+    if (!finished) {
+      saveRename();
+    }
   });
 }
 

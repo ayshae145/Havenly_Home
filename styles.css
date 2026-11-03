@@ -521,3 +521,171 @@
 .saved-max-delete:hover {
   text-decoration: underline;
 }
+/* ==========================================
+   Maintenance Max conversation sidebar
+   ========================================== */
+
+#page-assistant .assistant-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Main chat area */
+
+#page-assistant .assistant-main {
+  min-width: 0;
+}
+
+/* Saved conversations sidebar */
+
+.max-conversations-sidebar {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  min-width: 0;
+}
+
+/* Conversation buttons */
+
+.max-conversations-sidebar .max-conversation-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.max-conversations-sidebar .max-conversation-toolbar button {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* Saved conversations heading */
+
+.max-conversations-sidebar .max-saved-section {
+  margin-bottom: 0;
+}
+
+.max-conversations-sidebar .max-saved-section h3 {
+  font-size: 15px;
+  margin-bottom: 15px;
+}
+
+/* Individual saved conversations */
+
+.max-conversations-sidebar .saved-max-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.max-conversations-sidebar .saved-max-open {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.max-conversations-sidebar .saved-max-delete {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+/* Responsive layout */
+
+@media (max-width: 1100px) {
+  #page-assistant .assistant-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .max-conversations-sidebar {
+    width: 100%;
+  }
+}
+
+/* Rename saved conversations */
+
+.saved-max-rename {
+  background: transparent;
+  border: none;
+  color: var(--green);
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.saved-max-rename:hover {
+  text-decoration: underline;
+}
+
+/* Saved conversation action icons */
+
+.max-conversations-sidebar .saved-max-rename,
+.max-conversations-sidebar .saved-max-delete {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.max-conversations-sidebar .saved-max-rename:hover,
+.max-conversations-sidebar .saved-max-delete:hover {
+  background-color: #f0f3f1;
+  text-decoration: none;
+}
+
+/* Keep conversation title and icons on one line */
+
+.max-conversations-sidebar .saved-max-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.max-conversations-sidebar .saved-max-open {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inline editing for saved conversations */
+
+.saved-max-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #77a58d;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #183a34;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.saved-max-input:focus {
+  border-color: #2f755d;
+  box-shadow: 0 0 0 2px rgba(47, 117, 93, 0.12);
+}
+
+.saved-max-input:disabled {
+  opacity: 0.6;
+}

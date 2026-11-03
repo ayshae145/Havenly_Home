@@ -817,28 +817,7 @@
           <section class="page" id="page-assistant">
             <div class="assistant-layout">
               <div class="assistant-main">
-                <div class="max-conversation-toolbar">
-  <button
-    type="button"
-    class="secondary-button"
-    id="newMaxConversation"
-  >
-    + New Conversation
-  </button>
-
-  <button
-    type="button"
-    class="primary-button"
-    id="saveMaxConversation"
-  >
-    Save Conversation
-  </button>
-</div>
-
-<div class="max-saved-section">
-  <h3>Saved Conversations</h3>
-  <div id="savedMaxConversations"></div>
-</div>
+              
                 <div class="assistant-heading">
                   <div class="max-avatar big">✦</div>
                   <div>
@@ -887,37 +866,32 @@
                   contact a licensed professional.
                 </p>
               </div>
+                <aside class="max-conversations-sidebar">
 
-              <aside class="assistant-side panel">
-                <span class="eyebrow">YOUR HOME CONTEXT</span>
-                <h3>Your home context</h3>
-                  <p>
-                    Max can help answer your home maintenance questions.
-                    Personalized appliance information is coming soon.
-                  </p>
-
-                <div class="context-list" id="maxApplianceContext">
-                  <p>
-                    Your saved appliances will appear here
-                    when appliance integration is enabled.
-                  </p>
-                </div>
-                    <span>→</span>
+                <div class="max-conversation-toolbar">
+                  <button
+                    type="button"
+                    class="button button-primary"
+                    id="newMaxConversation"
+                  >
+                    + New Conversation
                   </button>
 
-                  <button class="context-appliance" data-appliance="Carrier HVAC System">
-                    <span class="mini-appliance-icon hvac">♨</span>
-                    <div>
-                      <strong>Carrier HVAC System</strong>
-                      <small>Last serviced Jun 22</small>
-                    </div>
-                    <span>→</span>
+                  <button
+                    type="button"
+                    class="button button-ghost"
+                    id="saveMaxConversation"
+                  >
+                    Save Conversation
                   </button>
                 </div>
 
-                <button class="text-button" data-page="appliances">
-                  View all appliances <span>→</span>
-                </button>
+                <div class="max-saved-section">
+                  <h3>Saved Conversations</h3>
+
+                  <div id="savedMaxConversations"></div>
+                </div>
+
               </aside>
             </div>
           </section>
