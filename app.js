@@ -943,6 +943,8 @@ function addChatMessage(text, type) {
 // Respond to the user's prompt with the app's current sample guidance.
 // Conversation history for the current page session.
 let maxConversation = [];
+let savedMaxConversationId = null;
+let maxConversationHasUnsavedChanges = false;
 
 // Prevent overlapping AI requests.
 let maxIsResponding = false;
@@ -1005,6 +1007,8 @@ async function askMax(text) {
       },
     ].slice(-20);
 
+    maxConversationHasUnsavedChanges = true;
+
   } catch (error) {
     console.error("Maintenance Max error:", error);
 
@@ -1042,6 +1046,257 @@ document.addEventListener("click", event => {
     closeModal(event.target.id);
   }
 });
+
+async function loadSavedMaxConversations() {
+  const container = document.getElementById(
+    "savedMaxConversations"
+  );
+
+  const { data: { user }, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !user) {
+    container.textContent = "";
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("max_conversations")
+    .select("id, title, updated_at")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading conversations:", error);
+    container.textContent = "Unable to load conversations.";
+    return;
+  }
+
+  container.replaceChildren();
+
+  if (data.length === 0) {
+    container.textContent = "No saved conversations yet.";
+    return;
+  }
+
+  data.forEach(conversation => {
+    const row = document.createElement("div");
+    row.className = "saved-max-row";
+
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "saved-max-open";
+    openButton.textContent = conversation.title;
+
+    openButton.addEventListener("click", () => {
+      openSavedMaxConversation(conversation.id);
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "saved-max-delete";
+    deleteButton.textContent = "Delete";
+    deleteButton.setAttribute(
+      "aria-label",
+      `Delete ${conversation.title}`
+    );
+
+    deleteButton.addEventListener("click", () => {
+      deleteSavedMaxConversation(conversation.id);
+    });
+
+    row.append(openButton, deleteButton);
+    container.appendChild(row);
+  });
+}
+
+async function saveMaxConversation() {
+  if (maxIsResponding) {
+    alert("Please wait for Max to finish responding.");
+    return;
+  }
+
+  if (maxConversation.length === 0) {
+    alert("Start a conversation before saving.");
+    return;
+  }
+
+  const { data: { user }, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !user) {
+    alert("Please sign in to save conversations.");
+    return;
+  }
+
+  const firstUserMessage = maxConversation.find(
+    message => message.role === "user"
+  );
+
+  const title = firstUserMessage
+    ? firstUserMessage.content.slice(0, 60)
+    : "Untitled conversation";
+
+  const conversationData = {
+    user_id: user.id,
+    title,
+    messages: maxConversation,
+    updated_at: new Date().toISOString()
+  };
+
+  let result;
+
+  if (savedMaxConversationId) {
+    // Update an existing saved conversation.
+    result = await supabaseClient
+      .from("max_conversations")
+      .update({
+        messages: maxConversation,
+        updated_at: conversationData.updated_at
+      })
+      .eq("id", savedMaxConversationId)
+      .eq("user_id", user.id)
+      .select("id")
+      .single();
+  } else {
+    // Save a new conversation.
+    result = await supabaseClient
+      .from("max_conversations")
+      .insert(conversationData)
+      .select("id")
+      .single();
+  }
+
+  if (result.error) {
+    console.error("Error saving conversation:", result.error);
+    alert("Unable to save conversation.");
+    return;
+  }
+
+  savedMaxConversationId = result.data.id;
+  maxConversationHasUnsavedChanges = false;
+
+  await loadSavedMaxConversations();
+
+  alert("Conversation saved successfully!");
+}
+
+async function openSavedMaxConversation(conversationId) {
+  if (maxIsResponding) {
+    alert("Please wait for Max to finish responding.");
+    return;
+  }
+
+  if (
+    maxConversationHasUnsavedChanges &&
+    !confirm("Discard changes to the current conversation?")
+  ) {
+    return;
+  }
+
+  const { data: { user }, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !user) return;
+
+  const { data, error } = await supabaseClient
+    .from("max_conversations")
+    .select("*")
+    .eq("id", conversationId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (error) {
+    console.error("Error opening conversation:", error);
+    alert("Unable to open conversation.");
+    return;
+  }
+
+  savedMaxConversationId = data.id;
+  maxConversation = data.messages;
+  maxConversationHasUnsavedChanges = false;
+
+  clearMaxChat();
+
+  maxConversation.forEach(message => {
+    addChatMessage(
+      message.content,
+      message.role === "assistant" ? "max" : "user"
+    );
+  });
+}
+
+async function deleteSavedMaxConversation(conversationId) {
+  const confirmed = confirm(
+    "Permanently delete this saved conversation?"
+  );
+
+  if (!confirmed) return;
+
+  const { data: { user }, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !user) return;
+
+  const { error } = await supabaseClient
+    .from("max_conversations")
+    .delete()
+    .eq("id", conversationId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error deleting conversation:", error);
+    alert("Unable to delete conversation.");
+    return;
+  }
+
+  if (savedMaxConversationId === conversationId) {
+    savedMaxConversationId = null;
+    maxConversation = [];
+    maxConversationHasUnsavedChanges = false;
+    clearMaxChat();
+  }
+
+  await loadSavedMaxConversations();
+}
+
+function clearMaxChat() {
+  const chatWindow = document.getElementById("chatWindow");
+
+  if (!chatWindow) return;
+
+  chatWindow.replaceChildren();
+
+  const messageList = document.createElement("div");
+  messageList.id = "chatMessageList";
+  messageList.className = "chat-message-list";
+
+  chatWindow.appendChild(messageList);
+}
+
+document.getElementById("saveMaxConversation")
+  .addEventListener("click", saveMaxConversation);
+
+document.getElementById("newMaxConversation")
+  .addEventListener("click", () => {
+    if (maxIsResponding) {
+      alert("Please wait for Max to finish responding.");
+      return;
+    }
+
+    if (
+      maxConversationHasUnsavedChanges &&
+      !confirm("Discard your unsaved conversation changes?")
+    ) {
+      return;
+    }
+
+    savedMaxConversationId = null;
+    maxConversation = [];
+    maxConversationHasUnsavedChanges = false;
+
+    clearMaxChat();
+  });
 
 // Keep the visible page in sync when the browser Back or Forward button is used.
 window.addEventListener("popstate", () => {
@@ -1699,7 +1954,7 @@ const signOutButton = $("#signOutButton");
 async function showMainApp() {
   loginPage.style.display = "none";
   appShell.style.display = "flex";
-
+  loadSavedMaxConversations();
   await loadAccount();
   await loadAppliances();
 }

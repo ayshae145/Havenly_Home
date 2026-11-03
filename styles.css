@@ -463,3 +463,61 @@
     width: 100%;
   }
 }
+
+/* Maintenance Max saved conversations */
+
+.max-conversation-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.max-conversation-toolbar button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.max-saved-section {
+  margin-bottom: 20px;
+}
+
+.max-saved-section h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.saved-max-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e1e8e3;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.saved-max-open {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-max-delete {
+  border: none;
+  background: transparent;
+  color: #b54a4a;
+  cursor: pointer;
+}
+
+.saved-max-delete:hover {
+  text-decoration: underline;
+}
