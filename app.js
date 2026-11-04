@@ -52,21 +52,21 @@ let maintenanceApplianceFilter = null;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
 
-Updated upstream
+//Updated upstream
 let events = [];
 let calendarMonth = new Date(
   new Date().getFullYear(),
   new Date().getMonth(),
   1
 );
-=======
+
 // Maintenance events are loaded from Supabase.
 let events = [];
 let eventsLoading = false;
 
 let displayedMonth = new Date();
 displayedMonth.setDate(1);
->>>>>>> Stashed changes
+// Stashed changes
 
 // Appliance records are loaded from Supabase after sign-in.
 // Start in the loading state so the page does not briefly show
