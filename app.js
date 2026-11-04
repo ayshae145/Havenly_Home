@@ -52,7 +52,7 @@ let maintenanceApplianceFilter = null;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
 
-<<<<<<< Updated upstream
+Updated upstream
 let events = [];
 let calendarMonth = new Date(
   new Date().getFullYear(),
