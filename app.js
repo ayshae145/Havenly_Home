@@ -164,8 +164,8 @@ function mapMaintenanceRecord(record) {
     name: record.event_name,
     category: record.maintenance_type || "General",
     applianceId: record.appliance_id,
-    date: record.scheduled_date,
-    time: formatMaintenanceTime(record.scheduled_time),
+    date: record.event_date,
+    time: formatMaintenanceTime(record.event_time),
     description: record.description || "",
     status: record.date_completed || record.status === "Completed"
       ? "Completed"
@@ -395,10 +395,10 @@ async function loadMaintenanceEvents() {
   }
 
   const { data: savedEvents, error } = await supabaseClient
-    .from("maintenance")
+    .from("maintenance_events")
     .select("*")
     .eq("user_id", userData.user.id)
-    .order("scheduled_date", { ascending: true });
+    .order("event_date", { ascending: true });
 
   if (error) {
     console.error("Supabase maintenance load error:", error);
@@ -619,7 +619,7 @@ function renderEvents() {
 
       button.disabled = true;
       const { data: updatedEvent, error } = await supabaseClient
-        .from("maintenance")
+        .from("maintenance_events")
         .update({
           status: "Completed",
           date_completed: getLocalDateString()
@@ -1833,13 +1833,13 @@ $("#eventForm").addEventListener("submit", async event => {
     appliance_id: formData.get("applianceId") || null,
     event_name: String(formData.get("name")),
     maintenance_type: String(formData.get("category")),
-    scheduled_date: eventDate,
-    scheduled_time: timeValue,
+    event_date: eventDate,
+    event_time: timeValue,
     description: String(formData.get("description") || ""),
     status: "Upcoming"
   };
   const { data: savedEvent, error: saveError } = await supabaseClient
-    .from("maintenance")
+    .from("maintenance_events")
     .insert(maintenanceRecord)
     .select()
     .single();
