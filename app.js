@@ -52,12 +52,21 @@ let maintenanceApplianceFilter = null;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
 
+<<<<<<< Updated upstream
 let events = [];
 let calendarMonth = new Date(
   new Date().getFullYear(),
   new Date().getMonth(),
   1
 );
+=======
+// Maintenance events are loaded from Supabase.
+let events = [];
+let eventsLoading = false;
+
+let displayedMonth = new Date();
+displayedMonth.setDate(1);
+>>>>>>> Stashed changes
 
 // Appliance records are loaded from Supabase after sign-in.
 // Start in the loading state so the page does not briefly show
@@ -287,6 +296,58 @@ function navigate(page, updateHistory = true) {
    Maintenance events
    ========================================================= */
 
+   async function loadMaintenanceEvents() {
+  eventsLoading = true;
+
+  try {
+    const { data: userData, error: userError } =
+      await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+      throw userError || new Error("Not signed in.");
+    }
+
+    const { data, error } = await supabaseClient
+      .from("maintenance_events")
+      .select("*")
+      .eq("user_id", userData.user.id)
+      .order("event_date", { ascending: true });
+
+    if (error) throw error;
+
+    events = (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      applianceId: item.appliance_id,
+      date: item.event_date,
+      time: item.event_time
+        ? new Date("2000-01-01T" + item.event_time)
+            .toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit"
+            })
+        : "",
+      description: item.description || "",
+      status: item.status
+    }));
+
+    renderCalendar();
+    renderEvents();
+    renderMiniEvents();
+
+  } catch (error) {
+    console.error("Error loading maintenance events:", error);
+
+    showToast(
+      "Error",
+      error.message || "Unable to load maintenance events."
+    );
+  } finally {
+    eventsLoading = false;
+  }
+}
+
 // Draw the small upcoming-events list on the home page.
 function renderMiniEvents() {
   const upcomingEvents = events
@@ -368,6 +429,7 @@ function populateEventAppliances() {
 // Draw the selected month and place maintenance events on their dates.
 function renderCalendar() {
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+<<<<<<< Updated upstream
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -378,6 +440,29 @@ function renderCalendar() {
     return eventDate.getFullYear() === year &&
       eventDate.getMonth() === month;
   });
+=======
+  const year = displayedMonth.getFullYear();
+const month = displayedMonth.getMonth();
+
+const firstDayOfMonth = new Date(year, month, 1).getDay();
+const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+const monthEvents = events.filter(event => {
+  const eventDate = new Date(event.date + "T12:00:00");
+
+  return eventDate.getFullYear() === year &&
+         eventDate.getMonth() === month;
+});
+
+$("#calendarView .calendar-head h2").textContent =
+  displayedMonth.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric"
+  });
+
+$("#calendarView .calendar-head p").textContent =
+  `${monthEvents.length} maintenance items this month`;
+>>>>>>> Stashed changes
 
   const cells = daysOfWeek.map(day =>
     '<div class="calendar-day-name">' + day + "</div>"
@@ -390,6 +475,7 @@ function renderCalendar() {
 
   // Add one calendar cell for each day, including that day's events.
   for (let day = 1; day <= daysInMonth; day += 1) {
+<<<<<<< Updated upstream
     const isoDate = year + "-" +
       String(month + 1).padStart(2, "0") + "-" +
       String(day).padStart(2, "0");
@@ -397,6 +483,17 @@ function renderCalendar() {
     const isToday = today.getFullYear() === year &&
       today.getMonth() === month &&
       today.getDate() === day;
+=======
+    const isoDate =
+  `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayEvents = events.filter(event => event.date === isoDate);
+    const today = new Date();
+
+    const isToday =
+      day === today.getDate() &&
+      month === today.getMonth() &&
+      year === today.getFullYear();
+>>>>>>> Stashed changes
 
     const eventMarkup = dayEvents
       .map((event, index) => {
@@ -440,6 +537,18 @@ function renderCalendar() {
   $("#calendarGrid").innerHTML = cells.join("");
   renderMiniEvents();
 }
+
+const monthArrows = $$("#calendarView .month-arrow");
+
+monthArrows[0].addEventListener("click", () => {
+  displayedMonth.setMonth(displayedMonth.getMonth() - 1);
+  renderCalendar();
+});
+
+monthArrows[1].addEventListener("click", () => {
+  displayedMonth.setMonth(displayedMonth.getMonth() + 1);
+  renderCalendar();
+});
 
 // Draw the maintenance list in date order and connect completion buttons.
 function renderEvents() {
@@ -491,6 +600,7 @@ function renderEvents() {
     })
     .join("");
 
+<<<<<<< Updated upstream
   $("#eventList").innerHTML =
     $("#eventList").innerHTML ||
     '<p class="maintenance-empty">No maintenance events yet. Add one to get started.</p>';
@@ -532,12 +642,57 @@ function renderEvents() {
       maintenanceEvent.status = "Completed";
       renderEvents();
       renderCalendar();
+=======
+ $$("[data-complete]").forEach(button => {
+  button.addEventListener("click", async () => {
+    const eventIndex = Number(button.dataset.complete);
+    const maintenanceEvent = events[eventIndex];
+
+    if (!maintenanceEvent) return;
+
+    button.disabled = true;
+
+    try {
+      const { data: userData, error: userError } =
+        await supabaseClient.auth.getUser();
+
+      if (userError || !userData.user) {
+        throw userError || new Error("Please sign in.");
+      }
+
+      const { data, error } = await supabaseClient
+        .from("maintenance_events")
+        .update({
+          status: "Completed",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", maintenanceEvent.id)
+        .eq("user_id", userData.user.id)
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      await loadMaintenanceEvents();
+
+>>>>>>> Stashed changes
       showToast(
         "Task completed",
-        "Nice work keeping your home on track."
+        "Your maintenance history has been updated."
       );
-    });
+
+    } catch (error) {
+      console.error("Error completing event:", error);
+
+      button.disabled = false;
+
+      showToast(
+        "Error",
+        error.message || "Unable to update the event."
+      );
+    }
   });
+});
 }
 
 /* =========================================================
@@ -1542,11 +1697,15 @@ $("#menuButton").addEventListener("click", () => {
 
 $("#openEventModal").addEventListener("click", () => {
   populateEventAppliances();
+  $("#eventForm").elements["date"].value =
+  new Date().toLocaleDateString("en-CA");
   openModal("eventModal");
 });
 
 $("#floatingAdd").addEventListener("click", () => {
   populateEventAppliances();
+  $("#eventForm").elements["date"].value =
+  new Date().toLocaleDateString("en-CA");
   openModal("eventModal");
 });
 
@@ -1652,6 +1811,7 @@ $$(".segment").forEach(button => {
   });
 });
 
+<<<<<<< Updated upstream
 // Save a new maintenance event to the signed-in user's maintenance log.
 $("#eventForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -1702,6 +1862,77 @@ $("#eventForm").addEventListener("submit", async event => {
     "Event added",
     "Your maintenance reminder is on the calendar."
   );
+=======
+// Save a new maintenance event to Supabase.
+$("#eventForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const form = event.target;
+  const saveButton = form.querySelector('[type="submit"]');
+  const formData = new FormData(form);
+
+  saveButton.disabled = true;
+  saveButton.textContent = "Saving...";
+
+  try {
+    const { data: userData, error: userError } =
+      await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+      throw userError || new Error("Please sign in.");
+    }
+
+    const applianceId = formData.get("applianceId") || null;
+
+    // Only link an appliance present in the user's loaded list.
+    if (
+      applianceId &&
+      !appliances.some(
+        appliance => String(appliance.id) === String(applianceId)
+      )
+    ) {
+      throw new Error("Please select a valid appliance.");
+    }
+
+    const newEvent = {
+      user_id: userData.user.id,
+      name: String(formData.get("name") || "").trim(),
+      category: formData.get("category"),
+      appliance_id: applianceId,
+      event_date: formData.get("date"),
+      event_time: formData.get("time") || null,
+      description: String(formData.get("description") || "").trim(),
+      status: "Upcoming"
+    };
+
+    const { error } = await supabaseClient
+      .from("maintenance_events")
+      .insert(newEvent);
+
+    if (error) throw error;
+
+    form.reset();
+    closeModal("eventModal");
+
+    await loadMaintenanceEvents();
+
+    showToast(
+      "Event added",
+      "Your maintenance event has been saved."
+    );
+
+  } catch (error) {
+    console.error("Error saving maintenance event:", error);
+
+    showToast(
+      "Error",
+      error.message || "Unable to save the event."
+    );
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "Save event";
+  }
+>>>>>>> Stashed changes
 });
 
 /* =========================================================
@@ -2216,7 +2447,9 @@ const signOutButton = $("#signOutButton");
 async function showMainApp() {
   loginPage.style.display = "none";
   appShell.style.display = "flex";
+
   loadSavedMaxConversations();
+
   await loadAccount();
   await loadAppliances();
   await loadMaintenanceEvents();
@@ -2331,6 +2564,13 @@ signOutButton.addEventListener("click", async () => {
   currentAccountUser = null;
   appliances = [];
   appliancesLoading = true;
+
+  events = [];
+  maintenanceApplianceFilter = null;
+
+  renderCalendar();
+  renderEvents();
+  renderMiniEvents();
 
   // Reset the account information displayed in the interface.
   $("#sidebarUsername").textContent = "Your Name";
