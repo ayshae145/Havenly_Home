@@ -321,25 +321,29 @@
                   List view
                 </button>
               </div>
-
-              <div class="toolbar-right">
-                <button class="filter-button">
-                  September 2026 <span>⌄</span>
-                </button>
-                <button class="filter-button">
-                  All categories <span>⌄</span>
-                </button>
-              </div>
+              <button class="calendar-today-button" id="calendarTodayButton">
+                Today
+              </button>
             </div>
 
             <div id="calendarView">
               <div class="calendar-head">
-                <button class="month-arrow">‹</button>
-                <div>
-                  <h2>September 2026</h2>
-                  <p>9 maintenance items this month</p>
+                <button
+                  class="month-arrow"
+                  type="button"
+                  data-month-offset="-1"
+                  aria-label="Previous month"
+                >‹</button>
+                <div class="calendar-month-title">
+                  <h2 id="calendarMonthTitle"></h2>
+                  <p id="calendarMonthCount"></p>
                 </div>
-                <button class="month-arrow">›</button>
+                <button
+                  class="month-arrow"
+                  type="button"
+                  data-month-offset="1"
+                  aria-label="Next month"
+                >›</button>
               </div>
 
               <div class="calendar-grid" id="calendarGrid"></div>
@@ -351,7 +355,7 @@
                   <span class="eyebrow">YOUR TASKS</span>
                   <h2>All maintenance</h2>
                 </div>
-                <span class="task-count">5 tasks</span>
+                <span class="task-count" id="maintenanceTaskCount"></span>
               </div>
 
               <div class="event-list" id="eventList"></div>
@@ -931,7 +935,7 @@
 
             <label>
               Date
-              <input name="date" type="date" required value="2026-10-01">
+              <input name="date" type="date" required>
             </label>
 
             <label>
