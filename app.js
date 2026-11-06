@@ -2233,7 +2233,51 @@ const loginMessage = $("#loginMessage");
 const signupForm = $("#signupForm");
 const showSignupButton = $("#showSignupButton");
 const backToLoginButton = $("#backToLoginButton");
-const signOutButton = $("#signOutButton");
+
+// Sign out from either the sidebar or the account popup.
+async function handleSignOut() {
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    alert("Sign out failed: " + error.message);
+    return;
+  }
+
+  // Close the popup before switching back to the login page.
+  closeModal("accountModal");
+
+  currentAccountUser = null;
+  appliances = [];
+  appliancesLoading = true;
+
+  events = [];
+  maintenanceApplianceFilter = null;
+
+  renderCalendar();
+  renderEvents();
+  renderMiniEvents();
+
+  // Reset the account information displayed in the interface.
+  $("#sidebarUsername").textContent = "Your Name";
+  $("#homeUsername").textContent = "there";
+
+  const maxUsername = $("#maxUsername");
+
+  if (maxUsername) {
+    maxUsername.textContent = "there";
+  }
+
+  $(".avatar-small").textContent = "?";
+  $(".top-avatar").textContent = "?";
+
+  appShell.style.display = "none";
+  loginPage.style.display = "flex";
+  loginForm.reset();
+}
+
+$$("[data-sign-out]").forEach(button => {
+  button.addEventListener("click", handleSignOut);
+});
 
 // Reveal the app after authentication and load the user's data.
 async function showMainApp() {
@@ -2344,40 +2388,3 @@ async function checkLoginSession() {
 // Check for an existing session when the page first loads.
 checkLoginSession();
 
-// Sign out and clear the previous user's information from the page.
-signOutButton.addEventListener("click", async () => {
-  const { error } = await supabaseClient.auth.signOut();
-
-  if (error) {
-    alert("Sign out failed: " + error.message);
-    return;
-  }
-
-  currentAccountUser = null;
-  appliances = [];
-  appliancesLoading = true;
-
-  events = [];
-  maintenanceApplianceFilter = null;
-
-  renderCalendar();
-  renderEvents();
-  renderMiniEvents();
-
-  // Reset the account information displayed in the interface.
-  $("#sidebarUsername").textContent = "Your Name";
-  $("#homeUsername").textContent = "there";
-
-  const maxUsername = $("#maxUsername");
-
-  if (maxUsername) {
-    maxUsername.textContent = "there";
-  }
-
-  $(".avatar-small").textContent = "?";
-  $(".top-avatar").textContent = "?";
-
-  appShell.style.display = "none";
-  loginPage.style.display = "flex";
-  loginForm.reset();
-});
