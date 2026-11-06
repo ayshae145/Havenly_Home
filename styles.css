@@ -1344,3 +1344,26 @@ body {
   border-color: #e3dccf;
   box-shadow: 0 22px 54px rgba(62, 54, 41, 0.12);
 }
+
+
+/* Maintenance event completion button */
+
+.event-complete {
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.event-complete[aria-pressed="true"] {
+  background-color: #2f715b;
+  color: white;
+  border-color: #2f715b;
+}
+
+.event-complete[aria-pressed="false"] {
+  background-color: white;
+  color: #225946;
+  border-color: #788981;
+}
+
+.event-complete:hover {
+  box-shadow: 0 0 0 3px rgba(47, 113, 91, 0.15);
+}

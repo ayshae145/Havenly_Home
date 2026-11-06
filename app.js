@@ -463,11 +463,15 @@ function renderEvents() {
 
       const eventIndex = events.indexOf(event);
       const completionControl =
-        event.status !== "Completed"
-          ? '<button class="event-complete" data-complete="' +
-            eventIndex +
-            '" title="Mark completed">✓</button>'
-          : '<span class="event-complete">✓</span>';
+  '<button class="event-complete" data-complete="' +
+  eventIndex +
+  '" title="' +
+  (event.status === "Completed" ? "Mark upcoming" : "Mark completed") +
+  '" aria-label="' +
+  (event.status === "Completed" ? "Mark upcoming" : "Mark completed") +
+  '" aria-pressed="' +
+  (event.status === "Completed") +
+  '">✓</button>';
 
       return (
         '<div class="event-card">' +
@@ -517,7 +521,7 @@ function renderEvents() {
         const { error } = await supabaseClient
           .from("maintenance_events")
           .update({
-            status: "Completed",
+            status: maintenanceEvent.status === "Completed" ? "Upcoming" : "Completed",
             updated_at: new Date().toISOString()
           })
           .eq("id", maintenanceEvent.id)
@@ -526,7 +530,7 @@ function renderEvents() {
         if (error) throw error;
 
         await loadMaintenanceEvents();
-        showToast("Task completed", "Maintenance history updated.");
+        showToast("Task updated", "Maintenance status updated.");
       } catch (error) {
         console.error("Error completing event:", error);
         button.disabled = false;
