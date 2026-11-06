@@ -910,8 +910,6 @@ function openAppliance(applianceId) {
     "appliance-large-icon " + selectedAppliance.tone;
   $("#detailIcon").textContent = selectedAppliance.icon;
 
-  $("#detailLast").textContent = selectedAppliance.last;
-  $("#detailNext").textContent = selectedAppliance.next;
   $("#detailStatus").textContent = selectedAppliance.status;
   $("#detailStatus").className =
     "status-pill " + statusClass(selectedAppliance.status);
@@ -1839,17 +1837,6 @@ $("#categoryFilter").addEventListener("change", renderAppliances);
    Assistant and professional page controls
    ========================================================= */
 
-// Open Maintenance Max from an appliance detail page.
-$("#askMaxButton").addEventListener("click", () => {
-  navigate("assistant");
-
-  setTimeout(() => {
-    if (selectedAppliance) {
-      askMax("I have a question about my " + selectedAppliance.name + ".");
-    }
-  }, 100);
-});
-
 // Handle the suggested Maintenance Max prompts.
 $$("[data-prompt]").forEach(button => {
   button.addEventListener("click", () => {
@@ -2387,4 +2374,3 @@ async function checkLoginSession() {
 
 // Check for an existing session when the page first loads.
 checkLoginSession();
-

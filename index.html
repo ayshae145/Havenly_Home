@@ -443,78 +443,28 @@
             </div>
 
             <div class="detail-grid">
-              <div class="detail-main">
-                <div class="panel status-summary">
-                  <div class="panel-heading">
-                    <div>
-                      <span class="eyebrow">AT A GLANCE</span>
-                      <h3>Maintenance status</h3>
-                    </div>
-
-                    <span class="health-score">
-                      <span id="detailHealth">—</span>
-                      <small>health score</small>
-                    </span>
+              <div class="panel">
+                <div class="panel-heading">
+                  <div>
+                    <span class="eyebrow">KEEPING A RECORD</span>
+                    <h3>Maintenance history</h3>
                   </div>
-
-                  <div class="status-metrics">
-                    <div>
-                      <span>Last maintenance</span>
-                      <strong id="detailLast">Not recorded</strong>
-                    </div>
-                    <div>
-                      <span>Next recommended</span>
-                      <strong id="detailNext">Not scheduled</strong>
-                    </div>
-                    <div>
-                      <span>Current status</span>
-                      <strong id="detailCurrentStatus">
-                        Not available
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="panel">
-                  <div class="panel-heading">
-                    <div>
-                      <span class="eyebrow">KEEPING A RECORD</span>
-                      <h3>Maintenance history</h3>
-                    </div>
-                    <button class="text-button" id="viewMaintenanceHistoryButton" type="button">
-                     View all <span>→</span>
-                    </button>
-                  </div>
-
-                  <div class="timeline" id="detailHistory"></div>
-                </div>
-              </div>
-
-              <aside class="detail-side">
-                <div class="max-card">
-                  <div class="max-card-top">
-                    <span class="max-avatar">✦</span>
-                    <span class="eyebrow light">MAINTENANCE MAX</span>
-                  </div>
-                  <h3>Have a question about this appliance?</h3>
-                  <p>
-                    Max can help troubleshoot, explain a repair, or create a
-                    care plan.
-                  </p>
-                  <button
-                    class="button button-light full"
-                    id="askMaxButton"
-                  >
-                    Ask Max about it <span>→</span>
+                  <button class="text-button" id="viewMaintenanceHistoryButton" type="button">
+                    View all <span>→</span>
                   </button>
                 </div>
+                <div class="timeline" id="detailHistory"></div>
+              </div>
 
-                <div class="panel recommended">
-                  <span class="eyebrow">COMING UP</span>
-                  <h3>Recommended care</h3>
-                  <div id="detailRecommendations"></div>
+              <div class="panel">
+                <div class="panel-heading">
+                  <div>
+                    <span class="eyebrow">COMING UP</span>
+                    <h3>Recommended care</h3>
+                  </div>
                 </div>
-              </aside>
+                <div id="detailRecommendations"></div>
+              </div>
             </div>
           </section>
 
