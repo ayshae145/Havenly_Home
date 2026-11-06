@@ -133,6 +133,26 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Match the account sections while keeping sign-out visually neutral. */
+.account-signout-section {
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.account-signout-section h3 {
+  color: var(--ink);
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.account-signout-section p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
 .account-fields {
   display: grid;
   grid-template-columns: 1fr;
