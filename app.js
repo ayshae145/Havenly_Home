@@ -328,6 +328,13 @@ function navigate(page, updateHistory = true) {
       status: item.status
     }));
 
+    $("#homeDate").textContent = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }).toUpperCase();
+
     renderCalendar();
     renderEvents();
     renderMiniEvents();
@@ -428,6 +435,75 @@ function renderApplianceHistory(appliance) {
 }
 
 // Draw the selected month and place maintenance events on their dates.
+function showCalendarEventDetails(eventIndex) {
+  const selectedEvent = events[eventIndex];
+  if (!selectedEvent) return;
+  selectedMaintenanceEvent = selectedEvent;
+
+  document.getElementById("detailsEventName").textContent =
+    selectedEvent.name;
+  const eventDescription = selectedEvent.description.trim();
+  document.getElementById("detailsEventDescription").textContent =
+    eventDescription;
+  document.getElementById("eventDescriptionContainer").hidden =
+    !eventDescription;
+  document.getElementById("detailsEventDate").textContent =
+    selectedEvent.date;
+  document.getElementById("detailsEventTime").textContent =
+    selectedEvent.time || "Not specified";
+
+  const linkedAppliance = appliances.find(
+    appliance => String(appliance.id) === String(selectedEvent.applianceId)
+  );
+  document.getElementById("detailsEventAppliance").textContent =
+    linkedAppliance ? linkedAppliance.name : "No appliance";
+
+  const status = document.getElementById("detailsEventStatus");
+  status.textContent = maintenanceEventStatus(selectedEvent);
+  status.className =
+    selectedEvent.status === "Completed"
+      ? "details-status-completed"
+      : "details-status-upcoming";
+  const completionButton = $("#toggleEventCompletionButton");
+  const isCompleted = selectedEvent.status === "Completed";
+  completionButton.textContent =
+    isCompleted ? "Mark not complete" : "Mark complete";
+  completionButton.className =
+    "event-details-edit event-details-completion " +
+    (isCompleted ? "mark-not-complete" : "mark-complete");
+  completionButton.setAttribute("aria-pressed", String(isCompleted));
+
+  document.getElementById("calendarDayModal").hidden = true;
+  document.getElementById("eventDetailsModal").hidden = false;
+}
+
+function showCalendarDayEvents(date) {
+  const dayEvents = events.filter(event => event.date === date);
+  const formattedDate = new Date(date + "T12:00:00").toLocaleDateString(
+    "en-US",
+    { weekday: "long", month: "long", day: "numeric", year: "numeric" }
+  );
+
+  $("#calendarDayTitle").textContent = formattedDate;
+  $("#calendarDayEvents").innerHTML = dayEvents
+    .map((event, index) => {
+      const eventIndex = events.indexOf(event);
+      let eventColor = "";
+      if (index % 3 === 1) eventColor = " peach-event";
+      if (index % 3 === 2) eventColor = " purple-event";
+
+      return (
+        '<button type="button" class="calendar-event' + eventColor +
+        (event.status === "Completed" ? " completed" : "") + '"' +
+        ' data-calendar-event="' + eventIndex + '">' +
+        escapeHTML(event.name) +
+        "</button>"
+      );
+    })
+    .join("");
+  $("#calendarDayModal").hidden = false;
+}
+
 function renderCalendar() {
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const year = calendarMonth.getFullYear();
@@ -461,6 +537,7 @@ function renderCalendar() {
       today.getDate() === day;
 
     const eventMarkup = dayEvents
+  .slice(0, 1)
   .map((event, index) => {
     let eventColor = "";
 
@@ -482,11 +559,18 @@ function renderCalendar() {
     );
   })
   .join("");
+    const moreEventsMarkup = dayEvents.length > 1
+      ? '<button type="button" class="calendar-more" ' +
+        'data-calendar-more="' + isoDate + '" aria-label="Show ' +
+        (dayEvents.length - 1) + ' more events">' +
+        "+" + (dayEvents.length - 1) + " more</button>"
+      : "";
 
     cells.push(
       '<div class="calendar-cell' + (isToday ? " today" : "") + '">' +
         '<span class="day-number">' + day + "</span>" +
         eventMarkup +
+        moreEventsMarkup +
       "</div>"
     );
   }
@@ -505,51 +589,6 @@ function renderCalendar() {
     monthEvents.length + " maintenance " +
     (monthEvents.length === 1 ? "event" : "events") + " this month";
   $("#calendarGrid").innerHTML = cells.join("");
-
-$$("[data-calendar-event]").forEach(button => {
-  button.addEventListener("click", () => {
-    const eventIndex = Number(button.dataset.calendarEvent);
-    const selectedEvent = events[eventIndex];
-
-    if (!selectedEvent) return;
-    selectedMaintenanceEvent = selectedEvent;
-
-    document.getElementById("detailsEventName").textContent =
-      selectedEvent.name;
-    const eventDescription = selectedEvent.description.trim();
-    document.getElementById("detailsEventDescription").textContent =
-      eventDescription;
-    document.getElementById("eventDescriptionContainer").hidden =
-      !eventDescription;
-    document.getElementById("detailsEventDate").textContent =
-      selectedEvent.date;
-    document.getElementById("detailsEventTime").textContent =
-      selectedEvent.time || "Not specified";
-
-    const linkedAppliance = appliances.find(
-      appliance => String(appliance.id) === String(selectedEvent.applianceId)
-    );
-    document.getElementById("detailsEventAppliance").textContent =
-      linkedAppliance ? linkedAppliance.name : "No appliance";
-
-    const status = document.getElementById("detailsEventStatus");
-    status.textContent = maintenanceEventStatus(selectedEvent);
-    status.className =
-      selectedEvent.status === "Completed"
-        ? "details-status-completed"
-        : "details-status-upcoming";
-    const completionButton = $("#toggleEventCompletionButton");
-    const isCompleted = selectedEvent.status === "Completed";
-    completionButton.textContent =
-      isCompleted ? "Mark not complete" : "Mark complete";
-    completionButton.className =
-      "event-details-edit event-details-completion " +
-      (isCompleted ? "mark-not-complete" : "mark-complete");
-    completionButton.setAttribute("aria-pressed", String(isCompleted));
-
-    document.getElementById("eventDetailsModal").hidden = false;
-  });
-});
 
 renderMiniEvents();
 }
@@ -1244,6 +1283,28 @@ async function askMax(text) {
 
 // Handle page links, modal close buttons, and backdrop clicks in one place.
 document.addEventListener("click", async event => {
+  const moreEventsButton = event.target.closest("[data-calendar-more]");
+  if (moreEventsButton) {
+    showCalendarDayEvents(moreEventsButton.dataset.calendarMore);
+    return;
+  }
+
+  const calendarEventButton = event.target.closest("[data-calendar-event]");
+  if (calendarEventButton) {
+    showCalendarEventDetails(
+      Number(calendarEventButton.dataset.calendarEvent)
+    );
+    return;
+  }
+
+  if (
+    event.target.closest("#closeCalendarDayModal") ||
+    event.target.id === "calendarDayModal"
+  ) {
+    $("#calendarDayModal").hidden = true;
+    return;
+  }
+
   const homeCompletionButton = event.target.closest("[data-home-complete]");
   if (homeCompletionButton) {
     const maintenanceEvent =
