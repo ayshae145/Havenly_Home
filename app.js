@@ -48,6 +48,8 @@ const pageNames = {
 let currentPage = "home";
 let selectedAppliance = null;
 let applianceBeingEdited = null;
+let maintenanceEventBeingEdited = null;
+let selectedMaintenanceEvent = null;
 let maintenanceApplianceFilter = null;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
@@ -205,6 +207,26 @@ function statusClass(status) {
   return "gray";
 }
 
+function maintenanceEventStatus(event) {
+  if (event.status === "Completed") {
+    return "Completed";
+  }
+
+  const today = getLocalDateString();
+  if (event.date > today) {
+    return "Upcoming";
+  }
+  if (event.date < today) {
+    return "Not completed";
+  }
+  if (!event.timeValue) {
+    return "Upcoming";
+  }
+
+  const scheduledAt = new Date(event.date + "T" + event.timeValue);
+  return scheduledAt >= new Date() ? "Upcoming" : "Not completed";
+}
+
 /* =========================================================
    Page navigation
    ========================================================= */
@@ -301,6 +323,7 @@ function navigate(page, updateHistory = true) {
       applianceId: item.appliance_id,
       date: item.event_date,
       time: formatMaintenanceTime(item.event_time),
+      timeValue: item.event_time || "",
       description: item.description || "",
       status: item.status
     }));
@@ -308,6 +331,9 @@ function navigate(page, updateHistory = true) {
     renderCalendar();
     renderEvents();
     renderMiniEvents();
+    if (selectedAppliance) {
+      renderApplianceHistory(selectedAppliance);
+    }
 
   } catch (error) {
     console.error("Error loading maintenance events:", error);
@@ -321,16 +347,23 @@ function navigate(page, updateHistory = true) {
   }
 }
 
-// Draw the small upcoming-events list on the home page.
+// Show the three nearest incomplete events on the home page.
 function renderMiniEvents() {
-  const upcomingEvents = events
-    .filter(event => event.status !== "Completed")
-    .sort((first, second) => first.date.localeCompare(second.date))
+  const homeEvents = events
+    .filter(event => maintenanceEventStatus(event) === "Upcoming")
+    .sort((first, second) =>
+      (first.date + "T" + (first.timeValue || "23:59")).localeCompare(
+        second.date + "T" + (second.timeValue || "23:59")
+      )
+    )
     .slice(0, 3);
 
-  $("#miniEventList").innerHTML = upcomingEvents
+  $("#miniEventList").innerHTML = homeEvents
     .map(event => {
       const date = formatDate(event.date);
+      const eventIndex = events.indexOf(event);
+      const status = maintenanceEventStatus(event);
+      const isCompleted = event.status === "Completed";
 
       return (
         '<div class="mini-event">' +
@@ -339,15 +372,27 @@ function renderMiniEvents() {
             "<b>" + date.day + "</b>" +
           "</div>" +
           '<div class="mini-event-info">' +
-            "<strong>" + escapeHTML(event.name) + "</strong>" +
-            "<span>" + escapeHTML(event.time) + " · " +
+            '<strong class="home-event-name' +
+              (isCompleted ? " completed" : "") + '">' +
+              escapeHTML(event.name) + "</strong>" +
+            "<span>" + escapeHTML(event.time || "Time not set") + " · " +
               escapeHTML(event.category) + "</span>" +
           "</div>" +
-          '<span class="event-category">Upcoming</span>' +
+          '<span class="event-category' +
+            (isCompleted ? " completed" : "") + '">' +
+            escapeHTML(status) + "</span>" +
+          '<button class="event-complete home-event-complete"' +
+            ' data-home-complete="' + eventIndex + '"' +
+            ' aria-label="' +
+              (isCompleted ? "Mark not complete" : "Mark complete") + '"' +
+            ' title="' +
+              (isCompleted ? "Mark not complete" : "Mark complete") + '"' +
+            ' aria-pressed="' + isCompleted + '">' +
+            "✓</button>" +
         "</div>"
       );
     })
-    .join("") || '<p class="maintenance-empty">No upcoming maintenance.</p>';
+    .join("") || '<p class="maintenance-empty">No maintenance events yet.</p>';
 }
 
 function populateEventAppliances() {
@@ -355,14 +400,31 @@ function populateEventAppliances() {
   const selectedValue = select.value;
 
   select.innerHTML =
-    '<option value="">General home maintenance</option>' +
+    '<option value="">No appliance</option>' +
     appliances.map(appliance =>
-      '<option value="' + appliance.id + '">' +
-        appliance.name +
+      '<option value="' + escapeHTML(appliance.id) + '">' +
+        escapeHTML(appliance.name) +
       '</option>'
     ).join("");
 
   select.value = selectedValue;
+}
+
+function renderApplianceHistory(appliance) {
+  const applianceEvents = events
+    .filter(event => String(event.applianceId) === String(appliance.id))
+    .sort((first, second) => second.date.localeCompare(first.date));
+
+  $("#detailHistory").innerHTML = applianceEvents
+    .map(event =>
+      '<article class="appliance-history-item">' +
+        "<strong>" + escapeHTML(event.name) + "</strong>" +
+        "<span>" + escapeHTML(formatDate(event.date).full) + " · " +
+          escapeHTML(maintenanceEventStatus(event)) + "</span>" +
+      "</article>"
+    )
+    .join("") ||
+    '<p class="maintenance-empty">No maintenance history for this appliance yet.</p>';
 }
 
 // Draw the selected month and place maintenance events on their dates.
@@ -411,7 +473,8 @@ function renderCalendar() {
     const eventIndex = events.indexOf(event);
 
     return (
-      '<button type="button" class="calendar-event' + eventColor + '"' +
+      '<button type="button" class="calendar-event' + eventColor +
+      (event.status === "Completed" ? " completed" : "") + '"' +
         ' data-calendar-event="' + eventIndex + '"' +
         ' title="View event details">' +
         escapeHTML(event.name) +
@@ -439,7 +502,7 @@ function renderCalendar() {
   );
   $("#calendarMonthCount").textContent =
     monthEvents.length + " maintenance " +
-    (monthEvents.length === 1 ? "item" : "items") + " this month";
+    (monthEvents.length === 1 ? "event" : "events") + " this month";
   $("#calendarGrid").innerHTML = cells.join("");
 
 $$("[data-calendar-event]").forEach(button => {
@@ -448,39 +511,42 @@ $$("[data-calendar-event]").forEach(button => {
     const selectedEvent = events[eventIndex];
 
     if (!selectedEvent) return;
-
-    const details = [
-      "Event: " + selectedEvent.name,
-      "Date: " + selectedEvent.date,
-      "Time: " + (selectedEvent.time || "Not specified"),
-      "Category: " + selectedEvent.category,
-      "Status: " + selectedEvent.status,
-      "Description: " + (selectedEvent.description || "None")
-    ].join("\n");
+    selectedMaintenanceEvent = selectedEvent;
 
     document.getElementById("detailsEventName").textContent =
-  selectedEvent.name;
+      selectedEvent.name;
+    const eventDescription = selectedEvent.description.trim();
+    document.getElementById("detailsEventDescription").textContent =
+      eventDescription;
+    document.getElementById("eventDescriptionContainer").hidden =
+      !eventDescription;
+    document.getElementById("detailsEventDate").textContent =
+      selectedEvent.date;
+    document.getElementById("detailsEventTime").textContent =
+      selectedEvent.time || "Not specified";
 
-document.getElementById("detailsEventDate").textContent =
-  selectedEvent.date;
+    const linkedAppliance = appliances.find(
+      appliance => String(appliance.id) === String(selectedEvent.applianceId)
+    );
+    document.getElementById("detailsEventAppliance").textContent =
+      linkedAppliance ? linkedAppliance.name : "No appliance";
 
-document.getElementById("detailsEventTime").textContent =
-  selectedEvent.time || "Not specified";
+    const status = document.getElementById("detailsEventStatus");
+    status.textContent = maintenanceEventStatus(selectedEvent);
+    status.className =
+      selectedEvent.status === "Completed"
+        ? "details-status-completed"
+        : "details-status-upcoming";
+    const completionButton = $("#toggleEventCompletionButton");
+    const isCompleted = selectedEvent.status === "Completed";
+    completionButton.textContent =
+      isCompleted ? "Mark not complete" : "Mark complete";
+    completionButton.className =
+      "event-details-edit event-details-completion " +
+      (isCompleted ? "mark-not-complete" : "mark-complete");
+    completionButton.setAttribute("aria-pressed", String(isCompleted));
 
-document.getElementById("detailsEventCategory").textContent =
-  selectedEvent.category || "General";
-
-document.getElementById("detailsEventDescription").textContent =
-  selectedEvent.description || "None";
-
-const status = document.getElementById("detailsEventStatus");
-status.textContent = selectedEvent.status;
-status.className =
-  selectedEvent.status === "Completed"
-    ? "details-status-completed"
-    : "details-status-upcoming";
-
-document.getElementById("eventDetailsModal").hidden = false;
+    document.getElementById("eventDetailsModal").hidden = false;
   });
 });
 
@@ -512,9 +578,9 @@ function renderEvents() {
   '<button class="event-complete" data-complete="' +
   eventIndex +
   '" title="' +
-  (event.status === "Completed" ? "Mark upcoming" : "Mark completed") +
+  (event.status === "Completed" ? "Mark not completed" : "Mark completed") +
   '" aria-label="' +
-  (event.status === "Completed" ? "Mark upcoming" : "Mark completed") +
+  (event.status === "Completed" ? "Mark not completed" : "Mark completed") +
   '" aria-pressed="' +
   (event.status === "Completed") +
   '">✓</button>';
@@ -526,14 +592,17 @@ function renderEvents() {
             "<b>" + date.day + "</b>" +
           "</div>" +
           '<div class="event-card-body">' +
-            "<strong>" + escapeHTML(event.name) + "</strong>" +
+            '<strong class="event-list-event-name' +
+              (event.status === "Completed" ? " completed" : "") +
+              '">' + escapeHTML(event.name) + "</strong>" +
             "<small>" + escapeHTML(event.category) + " · " +
               escapeHTML(event.time) + escapeHTML(applianceLabel) + "</small>" +
             '<p class="event-description">' +
               escapeHTML(event.description || "") + "</p>" +
           "</div>" +
-          '<span class="status-pill ' + statusClass(event.status) + '">' +
-            escapeHTML(event.status) +
+          '<span class="status-pill ' +
+            statusClass(maintenanceEventStatus(event)) + '">' +
+            escapeHTML(maintenanceEventStatus(event)) +
           "</span>" +
           completionControl +
         "</div>"
@@ -557,25 +626,7 @@ function renderEvents() {
       button.disabled = true;
 
       try {
-        const { data: userData, error: userError } =
-          await supabaseClient.auth.getUser();
-
-        if (userError || !userData.user) {
-          throw userError || new Error("Please sign in.");
-        }
-
-        const { error } = await supabaseClient
-          .from("maintenance_events")
-          .update({
-            status: maintenanceEvent.status === "Completed" ? "Upcoming" : "Completed",
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", maintenanceEvent.id)
-          .eq("user_id", userData.user.id);
-
-        if (error) throw error;
-
-        await loadMaintenanceEvents();
+        await toggleMaintenanceCompletion(maintenanceEvent);
         showToast("Task updated", "Maintenance status updated.");
       } catch (error) {
         console.error("Error completing event:", error);
@@ -584,6 +635,28 @@ function renderEvents() {
       }
     });
   });
+}
+
+async function toggleMaintenanceCompletion(maintenanceEvent) {
+  const { data: userData, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !userData.user) {
+    throw userError || new Error("Please sign in.");
+  }
+
+  const { error } = await supabaseClient
+    .from("maintenance_events")
+    .update({
+      status: maintenanceEvent.status === "Completed" ? "Upcoming" : "Completed",
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", maintenanceEvent.id)
+    .eq("user_id", userData.user.id);
+
+  if (error) throw error;
+
+  await loadMaintenanceEvents();
 }
 
 
@@ -955,6 +1028,7 @@ function openAppliance(applianceId) {
   }
 
   $("#detailMeta").textContent = applianceDetails.join(" · ");
+  renderApplianceHistory(selectedAppliance);
 
   $("#detailIcon").className =
     "appliance-large-icon " + selectedAppliance.tone;
@@ -1164,8 +1238,79 @@ async function askMax(text) {
    ========================================================= */
 
 // Handle page links, modal close buttons, and backdrop clicks in one place.
-document.addEventListener("click", event => {
-   // Close the event details popup
+document.addEventListener("click", async event => {
+  const homeCompletionButton = event.target.closest("[data-home-complete]");
+  if (homeCompletionButton) {
+    const maintenanceEvent =
+      events[Number(homeCompletionButton.dataset.homeComplete)];
+    if (!maintenanceEvent) return;
+
+    homeCompletionButton.disabled = true;
+    try {
+      await toggleMaintenanceCompletion(maintenanceEvent);
+      showToast("Task updated", "Maintenance status updated.");
+    } catch (error) {
+      console.error("Error completing event from home:", error);
+      homeCompletionButton.disabled = false;
+      showToast("Error", error.message || "Unable to update event.");
+    }
+    return;
+  }
+
+  if (event.target.closest("#toggleEventCompletionButton")) {
+    const button = $("#toggleEventCompletionButton");
+    if (!selectedMaintenanceEvent) return;
+
+    button.disabled = true;
+    try {
+      await toggleMaintenanceCompletion(selectedMaintenanceEvent);
+      selectedMaintenanceEvent = events.find(
+        maintenanceEvent =>
+          maintenanceEvent.id === selectedMaintenanceEvent.id
+      ) || null;
+
+      if (selectedMaintenanceEvent) {
+        const status = $("#detailsEventStatus");
+        status.textContent = maintenanceEventStatus(selectedMaintenanceEvent);
+        status.className =
+          selectedMaintenanceEvent.status === "Completed"
+            ? "details-status-completed"
+            : "details-status-upcoming";
+        button.textContent =
+          selectedMaintenanceEvent.status === "Completed"
+            ? "Mark not complete"
+            : "Mark complete";
+        button.className =
+          "event-details-edit event-details-completion " +
+          (selectedMaintenanceEvent.status === "Completed"
+            ? "mark-not-complete"
+            : "mark-complete");
+        button.setAttribute(
+          "aria-pressed",
+          String(selectedMaintenanceEvent.status === "Completed")
+        );
+      }
+
+      showToast("Task updated", "Maintenance status updated.");
+    } catch (error) {
+      console.error("Error completing event:", error);
+      showToast("Error", error.message || "Unable to update event.");
+    } finally {
+      button.disabled = false;
+    }
+    return;
+  }
+
+  if (event.target.closest("#editEventDetailsButton")) {
+    if (selectedMaintenanceEvent) {
+      document.getElementById("eventDetailsModal").hidden = true;
+      prepareEventForm(selectedMaintenanceEvent);
+      openModal("eventModal");
+    }
+    return;
+  }
+
+  // Close the event details popup.
   if (
     event.target.closest("#closeEventDetails") ||
     event.target.closest("#closeEventDetailsButton") ||
@@ -1595,18 +1740,40 @@ $("#menuButton").addEventListener("click", () => {
 });
 
 $("#openEventModal").addEventListener("click", () => {
-  populateEventAppliances();
-  $("#eventForm").elements["date"].value =
-  getLocalDateString();
+  prepareEventForm();
   openModal("eventModal");
 });
 
 $("#floatingAdd").addEventListener("click", () => {
-  populateEventAppliances();
-  $("#eventForm").elements["date"].value =
-  getLocalDateString();
+  prepareEventForm();
   openModal("eventModal");
 });
+
+function prepareEventForm(maintenanceEvent = null) {
+  const form = $("#eventForm");
+  const submitButton = form.querySelector('[type="submit"]');
+
+  form.reset();
+  populateEventAppliances();
+  maintenanceEventBeingEdited = maintenanceEvent?.id || null;
+  $("#eventCompletionField").hidden = !maintenanceEvent;
+  $("#eventModal").querySelector("h2").textContent =
+    maintenanceEvent ? "Edit maintenance event" : "Add maintenance event";
+  submitButton.textContent = maintenanceEvent ? "Save changes" : "Save event";
+
+  if (!maintenanceEvent) {
+    form.elements["date"].value = getLocalDateString();
+    return;
+  }
+
+  form.elements["name"].value = maintenanceEvent.name;
+  form.elements["applianceId"].value = maintenanceEvent.applianceId || "";
+  form.elements["date"].value = maintenanceEvent.date;
+  form.elements["time"].value = maintenanceEvent.timeValue;
+  form.elements["status"].value =
+    maintenanceEvent.status === "Completed" ? "Completed" : "Upcoming";
+  form.elements["description"].value = maintenanceEvent.description;
+}
 
 $$("[data-month-offset]").forEach(button => {
   button.addEventListener("click", () => {
@@ -1737,24 +1904,36 @@ $("#eventForm").addEventListener("submit", async event => {
       throw new Error("Please select a valid appliance.");
     }
 
-    const newEvent = {
-      user_id: userData.user.id,
+    const eventChanges = {
       name: String(formData.get("name") || "").trim(),
-      category: formData.get("category"),
+      category: maintenanceEventBeingEdited
+        ? events.find(item => item.id === maintenanceEventBeingEdited)?.category || "General"
+        : "General",
       appliance_id: applianceId,
       event_date: formData.get("date"),
       event_time: formData.get("time") || null,
       description: String(formData.get("description") || "").trim(),
-      status: "Upcoming"
+      status: formData.get("status") || "Upcoming"
     };
 
-    const { error } = await supabaseClient
-      .from("maintenance_events")
-      .insert(newEvent);
+    let saveQuery = supabaseClient.from("maintenance_events");
+    if (maintenanceEventBeingEdited) {
+      saveQuery = saveQuery
+        .update(eventChanges)
+        .eq("id", maintenanceEventBeingEdited)
+        .eq("user_id", userData.user.id);
+    } else {
+      saveQuery = saveQuery.insert({
+        ...eventChanges,
+        user_id: userData.user.id
+      });
+    }
+
+    const { error } = await saveQuery;
 
     if (error) throw error;
 
-    const [year, month] = String(newEvent.event_date)
+    const [year, month] = String(eventChanges.event_date)
     .split("-")
     .map(Number);
 
@@ -1763,11 +1942,16 @@ $("#eventForm").addEventListener("submit", async event => {
     form.reset();
     closeModal("eventModal");
 
+    const wasEditing = Boolean(maintenanceEventBeingEdited);
+    maintenanceEventBeingEdited = null;
+    selectedMaintenanceEvent = null;
     await loadMaintenanceEvents();
 
     showToast(
-      "Event added",
-      "Your maintenance event has been saved."
+      wasEditing ? "Event updated" : "Event added",
+      wasEditing
+        ? "Your maintenance event has been updated."
+        : "Your maintenance event has been saved."
     );
 
   } catch (error) {
@@ -1779,7 +1963,9 @@ $("#eventForm").addEventListener("submit", async event => {
     );
   } finally {
     saveButton.disabled = false;
-    saveButton.textContent = "Save event";
+    saveButton.textContent = maintenanceEventBeingEdited
+      ? "Save changes"
+      : "Save event";
   }
 
 });
@@ -2433,20 +2619,3 @@ async function checkLoginSession() {
 
 // Check for an existing session when the page first loads.
 checkLoginSession();
-
-function closeMaintenanceDetails() {
-  document.getElementById("eventDetailsModal").hidden = true;
-}
-
-document.getElementById("closeEventDetails")
-  .addEventListener("click", closeMaintenanceDetails);
-
-document.getElementById("closeEventDetailsButton")
-  .addEventListener("click", closeMaintenanceDetails);
-
-document.getElementById("eventDetailsModal")
-  .addEventListener("click", event => {
-    if (event.target.id === "eventDetailsModal") {
-      closeMaintenanceDetails();
-    }
-  });

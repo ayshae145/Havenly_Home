@@ -148,11 +148,6 @@
           </div>
 
           <div class="topbar-actions">
-            <button class="icon-button" aria-label="Notifications">
-              ♢
-              <span class="notification-dot"></span>
-            </button>
-
             <button
               class="top-avatar"
               id="topAccountButton"
@@ -261,8 +256,8 @@
               <div class="upcoming-panel panel">
                 <div class="panel-heading">
                   <div>
-                    <span class="eyebrow">NEXT UP</span>
-                    <h3>Upcoming maintenance</h3>
+                    <span class="eyebrow">YOUR SCHEDULE</span>
+                    <h3>Maintenance events</h3>
                   </div>
 
                   <button class="icon-button muted" data-page="maintenance">
@@ -859,20 +854,9 @@
             </label>
 
             <label>
-              Appliance
+              Attach appliance (optional)
               <select name="applianceId" id="eventAppliance">
-              <option value="">General home maintenance</option>
-              </select>
-              </label>
-
-            <label>
-              Category or appliance
-              <select name="category">
-                <option>HVAC</option>
-                <option>Kitchen</option>
-                <option>Laundry</option>
-                <option>Plumbing</option>
-                <option>General</option>
+                <option value="">No appliance</option>
               </select>
             </label>
 
@@ -884,6 +868,14 @@
             <label>
               Time
               <input name="time" type="time" value="09:00">
+            </label>
+
+            <label id="eventCompletionField" hidden>
+              Completion
+              <select name="status">
+                <option value="Upcoming">Not completed</option>
+                <option value="Completed">Completed</option>
+              </select>
             </label>
           </div>
 
@@ -1219,13 +1211,9 @@
     <!-- Maintenance Event Details Modal -->
 <div id="eventDetailsModal" class="event-details-overlay" hidden>
   <div class="event-details-modal" role="dialog"
-       aria-modal="true" aria-labelledby="eventDetailsTitle">
+       aria-modal="true" aria-labelledby="detailsEventName">
 
     <div class="event-details-header">
-      <div>
-        <p class="event-details-eyebrow">MAINTENANCE LOG</p>
-        <h2 id="eventDetailsTitle">Event Details</h2>
-      </div>
       <button type="button" id="closeEventDetails"
               class="event-details-x" aria-label="Close">×</button>
     </div>
@@ -1235,15 +1223,26 @@
       <span id="detailsEventStatus"></span>
     </div>
 
+    <div class="event-description-highlight" id="eventDescriptionContainer" hidden>
+      <p id="detailsEventDescription"></p>
+    </div>
+
     <div class="event-details-grid">
       <div><small>Date</small><p id="detailsEventDate"></p></div>
       <div><small>Time</small><p id="detailsEventTime"></p></div>
-      <div><small>Category</small><p id="detailsEventCategory"></p></div>
-      <div><small>Description</small><p id="detailsEventDescription"></p></div>
+      <div><small>Appliance</small><p id="detailsEventAppliance"></p></div>
     </div>
 
-    <button type="button" id="closeEventDetailsButton"
-            class="event-details-close">Close</button>
+    <div class="event-details-actions">
+      <button type="button" id="toggleEventCompletionButton"
+              class="event-details-edit event-details-completion mark-complete">
+        Mark complete
+      </button>
+      <button type="button" id="editEventDetailsButton"
+              class="event-details-edit">Edit event</button>
+      <button type="button" id="closeEventDetailsButton"
+              class="event-details-close">Close</button>
+    </div>
   </div>
 </div>
   </body>
