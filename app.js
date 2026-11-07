@@ -500,6 +500,7 @@ function renderCalendar() {
     "en-US",
     { month: "long", year: "numeric" }
   );
+  $("#listMonthTitle").textContent = $("#calendarMonthTitle").textContent;
   $("#calendarMonthCount").textContent =
     monthEvents.length + " maintenance " +
     (monthEvents.length === 1 ? "event" : "events") + " this month";
@@ -557,10 +558,18 @@ renderMiniEvents();
 function renderEvents() {
   const sortedEvents = events
     .filter(event =>
-      !maintenanceApplianceFilter ||
-      String(event.applianceId) === String(maintenanceApplianceFilter)
+      new Date(event.date + "T12:00:00").getFullYear() ===
+        calendarMonth.getFullYear() &&
+      new Date(event.date + "T12:00:00").getMonth() ===
+        calendarMonth.getMonth() &&
+      (!maintenanceApplianceFilter ||
+        String(event.applianceId) === String(maintenanceApplianceFilter))
     )
     .sort((first, second) => first.date.localeCompare(second.date));
+
+  $("#listMonthCount").textContent =
+    sortedEvents.length + " maintenance " +
+    (sortedEvents.length === 1 ? "event" : "events") + " this month";
 
   $("#eventList").innerHTML = sortedEvents
     .map(event => {
@@ -697,8 +706,6 @@ async function loadAppliances() {
         ? formatDate(appliance.last_maintenance_date).full
         : "Not yet serviced",
 
-     // No maintenance status or next date has been calculated yet.
-      next: "Not scheduled",
       status: "Not recorded",
       icon: "▤",
       tone: "",
@@ -918,11 +925,13 @@ function renderAppliances() {
           '<div class="appliance-card-top">' +
             iconFor(appliance) +
             '<div class="appliance-card-actions">' +
-              '<span class="status-pill ' +
-                statusClass(appliance.status) +
-              '">' +
-                appliance.status +
-              "</span>" +
+              (appliance.status !== "Not recorded"
+                ? '<span class="status-pill ' +
+                  statusClass(appliance.status) +
+                  '">' +
+                  appliance.status +
+                  "</span>"
+                : "") +
               '<button class="appliance-edit-button" type="button"' +
                 ' data-edit-appliance="' + appliance.id + '"' +
                 ' aria-label="Edit appliance"' +
@@ -941,10 +950,6 @@ function renderAppliances() {
             "<div>" +
               "<span>Last maintenance</span>" +
               "<strong>" + appliance.last + "</strong>" +
-            "</div>" +
-            "<div>" +
-              "<span>Next recommended</span>" +
-              "<strong>" + appliance.next + "</strong>" +
             "</div>" +
             '<span class="appliance-arrow">→</span>' +
           "</div>" +
@@ -1781,13 +1786,8 @@ $$("[data-month-offset]").forEach(button => {
       calendarMonth.getMonth() + Number(button.dataset.monthOffset)
     );
     renderCalendar();
+    renderEvents();
   });
-});
-
-$("#calendarTodayButton").addEventListener("click", () => {
-  const today = new Date();
-  calendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  renderCalendar();
 });
 
 $("#eventForm").querySelector('[name="date"]').value = getLocalDateString();
@@ -1807,7 +1807,6 @@ $("#viewMaintenanceHistoryButton").addEventListener("click", () => {
 
   $("#calendarView").classList.add("hidden");
   $("#listView").classList.remove("hidden");
-  $("#calendarTodayButton").classList.add("hidden");
 
   $$(".segment").forEach(button => {
     button.classList.toggle("active", button.dataset.view === "list");
@@ -1865,10 +1864,6 @@ $$(".segment").forEach(button => {
     $("#listView").classList.toggle(
       "hidden",
       button.dataset.view !== "list"
-    );
-    $("#calendarTodayButton").classList.toggle(
-      "hidden",
-      button.dataset.view !== "calendar"
     );
   });
 });
@@ -2034,7 +2029,6 @@ const {
       ? formatDate(savedAppliance.last_maintenance_date).full
       : "Not yet serviced",
 
-    next: "Not scheduled",
     status: "Not recorded",
     icon: "▤",
     tone: "",
