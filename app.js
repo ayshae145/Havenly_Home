@@ -399,23 +399,26 @@ function renderCalendar() {
       today.getDate() === day;
 
     const eventMarkup = dayEvents
-      .map((event, index) => {
-        let eventColor = "";
+  .map((event, index) => {
+    let eventColor = "";
 
-        if (index % 3 === 1) {
-          eventColor = " peach-event";
-        } else if (index % 3 === 2) {
-          eventColor = " purple-event";
-        }
+    if (index % 3 === 1) {
+      eventColor = " peach-event";
+    } else if (index % 3 === 2) {
+      eventColor = " purple-event";
+    }
 
-        return (
-          '<span class="calendar-event' + eventColor + '"' +
-            ' title="' + escapeHTML(event.description || event.name) + '">' +
-            escapeHTML(event.name) +
-          "</span>"
-        );
-      })
-      .join("");
+    const eventIndex = events.indexOf(event);
+
+    return (
+      '<button type="button" class="calendar-event' + eventColor + '"' +
+        ' data-calendar-event="' + eventIndex + '"' +
+        ' title="View event details">' +
+        escapeHTML(event.name) +
+      "</button>"
+    );
+  })
+  .join("");
 
     cells.push(
       '<div class="calendar-cell' + (isToday ? " today" : "") + '">' +
@@ -438,7 +441,50 @@ function renderCalendar() {
     monthEvents.length + " maintenance " +
     (monthEvents.length === 1 ? "item" : "items") + " this month";
   $("#calendarGrid").innerHTML = cells.join("");
-  renderMiniEvents();
+
+$$("[data-calendar-event]").forEach(button => {
+  button.addEventListener("click", () => {
+    const eventIndex = Number(button.dataset.calendarEvent);
+    const selectedEvent = events[eventIndex];
+
+    if (!selectedEvent) return;
+
+    const details = [
+      "Event: " + selectedEvent.name,
+      "Date: " + selectedEvent.date,
+      "Time: " + (selectedEvent.time || "Not specified"),
+      "Category: " + selectedEvent.category,
+      "Status: " + selectedEvent.status,
+      "Description: " + (selectedEvent.description || "None")
+    ].join("\n");
+
+    document.getElementById("detailsEventName").textContent =
+  selectedEvent.name;
+
+document.getElementById("detailsEventDate").textContent =
+  selectedEvent.date;
+
+document.getElementById("detailsEventTime").textContent =
+  selectedEvent.time || "Not specified";
+
+document.getElementById("detailsEventCategory").textContent =
+  selectedEvent.category || "General";
+
+document.getElementById("detailsEventDescription").textContent =
+  selectedEvent.description || "None";
+
+const status = document.getElementById("detailsEventStatus");
+status.textContent = selectedEvent.status;
+status.className =
+  selectedEvent.status === "Completed"
+    ? "details-status-completed"
+    : "details-status-upcoming";
+
+document.getElementById("eventDetailsModal").hidden = false;
+  });
+});
+
+renderMiniEvents();
 }
 
 // Draw the maintenance list in date order and connect completion buttons.
@@ -1119,6 +1165,15 @@ async function askMax(text) {
 
 // Handle page links, modal close buttons, and backdrop clicks in one place.
 document.addEventListener("click", event => {
+   // Close the event details popup
+  if (
+    event.target.closest("#closeEventDetails") ||
+    event.target.closest("#closeEventDetailsButton") ||
+    event.target.id === "eventDetailsModal"
+  ) {
+    document.getElementById("eventDetailsModal").hidden = true;
+    return;
+  }
   const pageTarget = event.target.closest("[data-page]");
 
   if (pageTarget) {
@@ -2378,3 +2433,20 @@ async function checkLoginSession() {
 
 // Check for an existing session when the page first loads.
 checkLoginSession();
+
+function closeMaintenanceDetails() {
+  document.getElementById("eventDetailsModal").hidden = true;
+}
+
+document.getElementById("closeEventDetails")
+  .addEventListener("click", closeMaintenanceDetails);
+
+document.getElementById("closeEventDetailsButton")
+  .addEventListener("click", closeMaintenanceDetails);
+
+document.getElementById("eventDetailsModal")
+  .addEventListener("click", event => {
+    if (event.target.id === "eventDetailsModal") {
+      closeMaintenanceDetails();
+    }
+  });

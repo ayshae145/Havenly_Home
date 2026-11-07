@@ -1216,5 +1216,35 @@
     <!-- Supabase client library must load before app.js -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
+    <!-- Maintenance Event Details Modal -->
+<div id="eventDetailsModal" class="event-details-overlay" hidden>
+  <div class="event-details-modal" role="dialog"
+       aria-modal="true" aria-labelledby="eventDetailsTitle">
+
+    <div class="event-details-header">
+      <div>
+        <p class="event-details-eyebrow">MAINTENANCE LOG</p>
+        <h2 id="eventDetailsTitle">Event Details</h2>
+      </div>
+      <button type="button" id="closeEventDetails"
+              class="event-details-x" aria-label="Close">×</button>
+    </div>
+
+    <div class="event-details-heading">
+      <h3 id="detailsEventName"></h3>
+      <span id="detailsEventStatus"></span>
+    </div>
+
+    <div class="event-details-grid">
+      <div><small>Date</small><p id="detailsEventDate"></p></div>
+      <div><small>Time</small><p id="detailsEventTime"></p></div>
+      <div><small>Category</small><p id="detailsEventCategory"></p></div>
+      <div><small>Description</small><p id="detailsEventDescription"></p></div>
+    </div>
+
+    <button type="button" id="closeEventDetailsButton"
+            class="event-details-close">Close</button>
+  </div>
+</div>
   </body>
 </html>
