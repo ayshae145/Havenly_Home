@@ -1200,6 +1200,157 @@ let maxConversation = [];
 let savedMaxConversationId = null;
 let maxConversationHasUnsavedChanges = false;
 
+// Show an AI-proposed event without saving it yet.
+function showMaxEventProposal(messageRow, proposal) {
+  const bubble = messageRow.querySelector(".chat-bubble");
+
+  const card = document.createElement("div");
+  card.className = "max-event-proposal";
+
+  const title = document.createElement("strong");
+  title.textContent = "Proposed calendar event";
+
+  const details = document.createElement("p");
+
+  const matchingAppliance = appliances.find(
+    appliance =>
+      String(appliance.id) === String(proposal.appliance_id)
+  );
+
+  details.textContent = [
+    proposal.name,
+    "Date: " + proposal.event_date,
+    "Time: " + (proposal.event_time || "Not specified"),
+    "Appliance: " + (matchingAppliance?.name || "General"),
+    proposal.description
+  ].filter(Boolean).join("\n");
+
+  const actions = document.createElement("div");
+  actions.className = "max-proposal-actions";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.textContent = "Cancel";
+  cancelButton.className = "button button-ghost";
+
+  const confirmButton = document.createElement("button");
+  confirmButton.textContent = "Confirm event";
+  confirmButton.className = "button button-primary";
+
+  cancelButton.addEventListener("click", () => {
+    card.remove();
+    addChatMessage("Event canceled. Nothing was saved.", "max");
+  });
+
+  confirmButton.addEventListener("click", async () => {
+    confirmButton.disabled = true;
+    cancelButton.disabled = true;
+    confirmButton.textContent = "Saving...";
+
+    try {
+      const { data: userData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+      if (authError || !userData.user) {
+        throw authError || new Error("Please sign in.");
+      }
+
+      // Revalidate the proposal before inserting it.
+      const validCategories = [
+        "HVAC", "Kitchen", "Laundry", "Plumbing", "General"
+      ];
+
+      const validDate = value => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const date = new Date(value + "T12:00:00Z");
+        return !Number.isNaN(date.getTime()) &&
+          date.toISOString().slice(0, 10) === value;
+      };
+
+      const validTime = proposal.event_time == null ||
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(proposal.event_time);
+
+      if (
+        typeof proposal.name !== "string" ||
+        !proposal.name.trim() ||
+        proposal.name.length > 150 ||
+        !validCategories.includes(proposal.category) ||
+        !validDate(proposal.event_date) ||
+        !validTime ||
+        typeof proposal.description !== "string" ||
+        proposal.description.length > 2000
+      ) {
+        throw new Error("The proposed event contains invalid details.");
+      }
+
+      if (proposal.appliance_id != null) {
+        const { data: ownedAppliance, error: applianceError } =
+          await supabaseClient
+            .from("appliances")
+            .select("appliance_id")
+            .eq("appliance_id", proposal.appliance_id)
+            .eq("user_id", userData.user.id)
+            .maybeSingle();
+
+        if (applianceError) throw applianceError;
+
+        if (!ownedAppliance) {
+          throw new Error("This appliance is not available.");
+        }
+      }
+
+      const { error } = await supabaseClient
+        .from("maintenance_events")
+        .insert({
+          user_id: userData.user.id,
+          name: proposal.name.trim(),
+          category: proposal.category,
+          appliance_id: proposal.appliance_id,
+          event_date: proposal.event_date,
+          event_time: proposal.event_time,
+          description: proposal.description,
+          status: "Upcoming"
+        });
+
+      if (error) throw error;
+
+      const [year, month] = proposal.event_date
+        .split("-")
+        .map(Number);
+
+      calendarMonth = new Date(year, month - 1, 1);
+
+      card.remove();
+
+      await loadMaintenanceEvents();
+
+      addChatMessage(
+        "Event saved! You can now find it in your Maintenance Log.",
+        "max"
+      );
+
+      showToast("Event added", "Max's proposed event was saved.");
+
+    } catch (error) {
+      console.error("Max event creation error:", error);
+
+      showToast(
+        "Error",
+        error.message || "Unable to save the event."
+      );
+
+      confirmButton.disabled = false;
+      cancelButton.disabled = false;
+      confirmButton.textContent = "Confirm event";
+    }
+  });
+
+  actions.append(cancelButton, confirmButton);
+  card.append(title, details, actions);
+  bubble.appendChild(card);
+
+  $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
+}
+
 // Prevent overlapping AI requests.
 let maxIsResponding = false;
 
@@ -1252,6 +1403,13 @@ async function askMax(text) {
     pendingMessage.querySelector(
       ".chat-bubble"
     ).textContent = data.reply;
+
+    if (data.proposedEvent) {
+  showMaxEventProposal(
+    pendingMessage,
+    data.proposedEvent
+  );
+}
 
     maxConversation = [
       ...nextConversation,

@@ -1676,3 +1676,39 @@ body {
   text-align: left;
   white-space: normal;
 }
+/* Maintenance Max calendar event proposals */
+
+.max-event-proposal {
+  margin-top: 14px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #d4e8da;
+  border-radius: 12px;
+  color: #24332f;
+  min-width: 240px;
+}
+
+.max-event-proposal strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.max-event-proposal p {
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #71807a;
+}
+
+.max-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.max-proposal-actions button {
+  font-size: 11px;
+  padding: 9px 12px;
+}
