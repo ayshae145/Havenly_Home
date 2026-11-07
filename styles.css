@@ -1367,3 +1367,136 @@ body {
 .event-complete:hover {
   box-shadow: 0 0 0 3px rgba(47, 113, 91, 0.15);
 }
+
+
+/* Maintenance Event Details Modal */
+
+.event-details-overlay[hidden] {
+  display: none;
+}
+
+.event-details-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(22, 35, 28, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.event-details-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+
+.event-details-header,
+.event-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.event-details-eyebrow {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #718075;
+  margin-bottom: 7px;
+}
+
+.event-details-header h2 {
+  font-size: 26px;
+  color: #253b30;
+  margin: 0;
+}
+
+.event-details-x {
+  background: #f1f3ef;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.event-details-heading {
+  margin: 25px 0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e8e8e2;
+}
+
+.event-details-heading h3 {
+  font-size: 22px;
+  color: #253b30;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.details-status-completed,
+.details-status-upcoming {
+  padding: 7px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.details-status-completed {
+  background: #e2f3e8;
+  color: #267348;
+}
+
+.details-status-upcoming {
+  background: #edf0ee;
+  color: #52665b;
+}
+
+.event-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.event-details-grid small {
+  color: #7b887e;
+  font-size: 12px;
+}
+
+.event-details-grid p {
+  color: #293b31;
+  font-weight: 500;
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.event-details-close {
+  width: 100%;
+  background: #385747;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 30px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.event-details-close:hover {
+  background: #294435;
+}
+
+@media (max-width: 480px) {
+  .event-details-modal {
+    padding: 22px;
+  }
+}
