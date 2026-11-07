@@ -177,9 +177,7 @@
           <section class="page active-page" id="page-home">
             <div class="hero">
               <div class="hero-content">
-                <span class="eyebrow light">
-                  WEDNESDAY, SEPTEMBER 30, 2026
-                </span>
+                <span class="eyebrow light" id="homeDate"></span>
 
                 <h1>
                   Take care of your home,<br>
@@ -190,9 +188,6 @@
                   Everything your home needs, organized in one peaceful place.
                 </p>
 
-                <button class="button button-light" data-page="maintenance">
-                  View maintenance log <span>→</span>
-                </button>
               </div>
             </div>
 
@@ -290,15 +285,15 @@
               </div>
 
               <div class="tip-panel">
-                <div class="tip-orb">✦</div>
-                <span class="eyebrow">A LITTLE TIP FROM MAX</span>
-                <h3>Small checks can prevent big repairs.</h3>
+                <div class="tip-orb" aria-hidden="true">✦</div>
+                <span class="eyebrow">MAINTENANCE MAX</span>
+                <h3>Need help with home maintenance?</h3>
                 <p>
-                  Take a moment to look at your HVAC filter this month.
-                  A clean filter helps your system work less and last longer.
+                  Chat with Max for guidance on repairs, upkeep, and your
+                  appliances.
                 </p>
                 <button class="text-button" data-page="assistant">
-                  Ask Max more <span>→</span>
+                  Chat with Max <span>→</span>
                 </button>
               </div>
             </div>
@@ -1244,6 +1239,17 @@
     <!-- Supabase client library must load before app.js -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
+    <div id="calendarDayModal" class="event-details-overlay" hidden>
+      <div class="event-details-modal calendar-day-modal" role="dialog"
+           aria-modal="true" aria-labelledby="calendarDayTitle">
+        <div class="event-details-header">
+          <h3 id="calendarDayTitle" class="calendar-day-title"></h3>
+          <button type="button" id="closeCalendarDayModal"
+                  class="event-details-x" aria-label="Close">×</button>
+        </div>
+        <div id="calendarDayEvents" class="calendar-day-events"></div>
+      </div>
+    </div>
     <!-- Maintenance Event Details Modal -->
 <div id="eventDetailsModal" class="event-details-overlay" hidden>
   <div class="event-details-modal" role="dialog"

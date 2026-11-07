@@ -632,8 +632,10 @@
 }
 
 .calendar-cell {
-  min-height: 104px;
+  height: 104px;
+  min-height: 0;
   padding: 8px;
+  overflow: hidden;
 }
 
 .calendar-cell.muted-day {
@@ -679,6 +681,23 @@
 
 .calendar-event.purple-event {
   background: #f0edfa;
+}
+
+.calendar-more {
+  display: block;
+  margin-top: 5px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.calendar-more:hover {
+  text-decoration: underline;
 }
 
 .maintenance-empty {
@@ -729,7 +748,8 @@
   }
 
   .calendar-cell {
-    min-height: 74px;
+    height: 74px;
+    min-height: 0;
     padding: 4px 3px;
   }
 
@@ -747,6 +767,12 @@
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+  }
+
+  .calendar-more {
+    margin-top: 3px;
+    padding: 2px;
+    font-size: 8px;
   }
 
   .event-card {
@@ -1625,4 +1651,28 @@ body {
 
 .sidebar-bottom > [data-sign-out]:hover {
   background: #edcbc6;
+}
+
+.calendar-day-modal {
+  max-width: 400px;
+}
+
+.calendar-day-title {
+  margin: 0;
+  color: #30343a;
+  font-size: 20px;
+}
+
+.calendar-day-events {
+  display: grid;
+  gap: 7px;
+}
+
+.calendar-day-events .calendar-event {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  text-align: left;
+  white-space: normal;
 }
