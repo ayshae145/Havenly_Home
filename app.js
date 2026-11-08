@@ -1052,7 +1052,12 @@ function openAppliance(applianceId) {
   $("#maintenanceRecommendationResult").hidden = true;
 
   $("#maintenanceRecommendationMessage").textContent =
-    "Select “Get a suggestion” to receive a maintenance recommendation.";
+  "Select “Get a suggestion” to receive a maintenance recommendation.";
+
+  sessionStorage.setItem(
+    "selectedApplianceId",
+    String(selectedAppliance.id)
+  );
 
   $("#editDetailApplianceButton").disabled = false;
 
@@ -2867,6 +2872,23 @@ async function showMainApp() {
   await loadAccount();
   await loadAppliances();
   await loadMaintenanceEvents();
+
+  // Restore the selected appliance after the user's data has loaded.
+  if (currentPage === "appliance-details") {
+    const savedApplianceId =
+      sessionStorage.getItem("selectedApplianceId");
+
+    const applianceStillExists = appliances.some(
+      appliance =>
+        String(appliance.id) === String(savedApplianceId)
+    );
+
+    if (applianceStillExists) {
+      openAppliance(savedApplianceId);
+    } else {
+      navigate("appliances", false);
+    }
+  }
 }
 
 // Sign in with the email and password entered by the user.
