@@ -1048,6 +1048,8 @@ function openAppliance(applianceId) {
     return;
   }
 
+  $("#editDetailApplianceButton").disabled = false;
+  
   $("#deleteDetailApplianceButton").disabled = false;
 
   $("#detailName").textContent = selectedAppliance.name;
@@ -1943,6 +1945,29 @@ window.addEventListener("popstate", () => {
 /* =========================================================
    Main page controls
    ========================================================= */
+$("#editDetailApplianceButton").addEventListener("click", () => {
+  if (!selectedAppliance) {
+    return;
+  }
+
+  const form = $("#applianceForm");
+
+  applianceBeingEdited = selectedAppliance.id;
+
+  form.elements["name"].value = selectedAppliance.name;
+  form.elements["type"].value = selectedAppliance.type;
+  form.elements["brand"].value = selectedAppliance.brand || "";
+  form.elements["model"].value = selectedAppliance.model || "";
+  form.elements["category"].value = selectedAppliance.category;
+  form.elements["purchase"].value =
+    selectedAppliance.purchaseDate || "";
+  form.elements["last"].value =
+    selectedAppliance.lastMaintenanceDate || "";
+
+  $("#applianceModalTitle").textContent = "Edit appliance";
+
+  openModal("applianceModal");
+});
 
 $("#deleteDetailApplianceButton").addEventListener("click", () => {
   if (selectedAppliance) {
