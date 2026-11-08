@@ -373,7 +373,7 @@ function renderMiniEvents() {
       const isCompleted = event.status === "Completed";
 
       return (
-        '<div class="mini-event">' +
+        '<div class="mini-event" data-home-event="' + eventIndex + '">' +
           '<div class="event-date">' +
             "<span>" + date.month + "</span>" +
             "<b>" + date.day + "</b>" +
@@ -634,7 +634,7 @@ function renderEvents() {
   '">✓</button>';
 
       return (
-        '<div class="event-card">' +
+        '<div class="event-card" data-list-event="' + eventIndex + '">' +
           '<div class="event-card-date">' +
             "<span>" + date.month + "</span>" +
             "<b>" + date.day + "</b>" +
@@ -1534,6 +1534,22 @@ async function askMax(text) {
 
 // Handle page links, modal close buttons, and backdrop clicks in one place.
 document.addEventListener("click", async event => {
+    const homeEventCard = event.target.closest("[data-home-event]");
+
+  if (homeEventCard && !event.target.closest("[data-home-complete]")) {
+    showCalendarEventDetails(
+      Number(homeEventCard.dataset.homeEvent)
+    );
+    return;
+  }
+    const listEventCard = event.target.closest("[data-list-event]");
+
+  if (listEventCard && !event.target.closest("[data-complete]")) {
+    showCalendarEventDetails(
+      Number(listEventCard.dataset.listEvent)
+    );
+    return;
+  }
   const moreEventsButton = event.target.closest("[data-calendar-more]");
   if (moreEventsButton) {
     showCalendarDayEvents(moreEventsButton.dataset.calendarMore);

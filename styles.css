@@ -1726,3 +1726,9 @@ body {
 .recommendation[hidden] {
   display: none;
 }
+
+.mini-event[data-home-event],
+.event-card[data-list-event],
+.calendar-event[data-calendar-event] {
+  cursor: pointer;
+}
