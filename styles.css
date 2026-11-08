@@ -426,6 +426,16 @@
   outline-offset: 2px;
 }
 
+/* Keep appliance Edit and Delete buttons the same size and font. */
+.appliance-edit-button,
+.appliance-delete-button {
+  min-height: 32px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .detail-actions {
   display: flex;
   align-items: center;
