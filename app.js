@@ -745,7 +745,8 @@ async function loadAppliances() {
         ? formatDate(appliance.last_maintenance_date).full
         : "Not yet serviced",
 
-      status: "Not recorded",
+     // No maintenance status or next date has been calculated yet.
+      next: "Not scheduled",
       icon: "▤",
       tone: "",
 
@@ -964,13 +965,6 @@ function renderAppliances() {
           '<div class="appliance-card-top">' +
             iconFor(appliance) +
             '<div class="appliance-card-actions">' +
-              (appliance.status !== "Not recorded"
-                ? '<span class="status-pill ' +
-                  statusClass(appliance.status) +
-                  '">' +
-                  appliance.status +
-                  "</span>"
-                : "") +
               '<button class="appliance-edit-button" type="button"' +
                 ' data-edit-appliance="' + appliance.id + '"' +
                 ' aria-label="Edit appliance"' +
@@ -1078,9 +1072,8 @@ function openAppliance(applianceId) {
     "appliance-large-icon " + selectedAppliance.tone;
   $("#detailIcon").textContent = selectedAppliance.icon;
 
-  $("#detailStatus").textContent = selectedAppliance.status;
-  $("#detailStatus").className =
-    "status-pill " + statusClass(selectedAppliance.status);
+  $("#detailLast").textContent = selectedAppliance.last;
+  $("#detailNext").textContent = selectedAppliance.next;
   // Enable deletion after an appliance has been selected.
   $("#deleteDetailApplianceButton").disabled = false;
   navigate("appliance-details");
@@ -2248,7 +2241,7 @@ const {
       ? formatDate(savedAppliance.last_maintenance_date).full
       : "Not yet serviced",
 
-    status: "Not recorded",
+    next: "Not scheduled",
     icon: "▤",
     tone: "",
 
