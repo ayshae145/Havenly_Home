@@ -154,6 +154,31 @@ function formatMaintenanceTime(timeValue) {
   });
 }
 
+function getRecurringDates(startDate, repeat) {
+  if (repeat === "none") {
+    return [startDate];
+  }
+
+  const start = new Date(startDate + "T12:00:00");
+  const dates = [];
+
+  for (let i = 0; i < 12; i += 1) {
+    const recurringDate = new Date(start);
+
+    if (repeat === "weekly") {
+      recurringDate.setDate(start.getDate() + (i * 7));
+    } else if (repeat === "monthly") {
+      recurringDate.setMonth(start.getMonth() + i);
+    } else if (repeat === "yearly") {
+      recurringDate.setFullYear(start.getFullYear() + i);
+    }
+
+    dates.push(getLocalDateString(recurringDate));
+  }
+
+  return dates;
+}
+
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, character => ({
     "&": "&amp;",
@@ -1543,6 +1568,52 @@ document.addEventListener("click", async event => {
     return;
   }
 
+  if (event.target.closest("#deleteEventDetailsButton")) {
+  if (!selectedMaintenanceEvent) return;
+
+  const shouldDelete = confirm(
+    "Are you sure you want to delete this maintenance event?"
+  );
+
+  if (!shouldDelete) return;
+
+  try {
+    const { data: userData, error: userError } =
+      await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+      throw userError || new Error("Please sign in.");
+    }
+
+    const { error } = await supabaseClient
+      .from("maintenance_events")
+      .delete()
+      .eq("id", selectedMaintenanceEvent.id)
+      .eq("user_id", userData.user.id);
+
+    if (error) throw error;
+
+    document.getElementById("eventDetailsModal").hidden = true;
+    selectedMaintenanceEvent = null;
+
+    await loadMaintenanceEvents();
+
+    showToast(
+      "Event deleted",
+      "The maintenance event has been deleted."
+    );
+  } catch (error) {
+    console.error("Error deleting maintenance event:", error);
+
+    showToast(
+      "Error",
+      error.message || "Unable to delete the event."
+    );
+  }
+
+  return;
+}
+
   // Close the event details popup.
   if (
     event.target.closest("#closeEventDetails") ||
@@ -2013,6 +2084,7 @@ function prepareEventForm(maintenanceEvent = null) {
   populateEventAppliances();
   maintenanceEventBeingEdited = maintenanceEvent?.id || null;
   $("#eventCompletionField").hidden = !maintenanceEvent;
+  $("#eventRepeatField").hidden = Boolean(maintenanceEvent);
   $("#eventModal").querySelector("h2").textContent =
     maintenanceEvent ? "Edit maintenance event" : "Add maintenance event";
   submitButton.textContent = maintenanceEvent ? "Save changes" : "Save event";
@@ -2126,6 +2198,7 @@ $("#eventForm").addEventListener("submit", async event => {
   const form = event.target;
   const saveButton = form.querySelector('[type="submit"]');
   const formData = new FormData(form);
+  const repeat = formData.get("repeat") || "none";
 
   saveButton.disabled = true;
   saveButton.textContent = "Saving...";
@@ -2169,11 +2242,19 @@ $("#eventForm").addEventListener("submit", async event => {
         .eq("id", maintenanceEventBeingEdited)
         .eq("user_id", userData.user.id);
     } else {
-      saveQuery = saveQuery.insert({
-        ...eventChanges,
-        user_id: userData.user.id
-      });
-    }
+  const recurringDates = getRecurringDates(
+    eventChanges.event_date,
+    repeat
+  );
+
+  const eventsToInsert = recurringDates.map(date => ({
+    ...eventChanges,
+    event_date: date,
+    user_id: userData.user.id
+  }));
+
+  saveQuery = saveQuery.insert(eventsToInsert);
+}
 
     const { error } = await saveQuery;
 

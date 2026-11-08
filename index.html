@@ -907,6 +907,16 @@
               Time
               <input name="time" type="time" value="09:00">
             </label>
+            <label id="eventRepeatField">
+  Repeat
+  <select name="repeat">
+    <option value="none">Does not repeat</option>
+    <option value="weekly">Weekly</option>
+    <option value="monthly">Monthly</option>
+    <option value="yearly">Yearly</option>
+  </select>
+</label>
+            
 
             <label id="eventCompletionField" hidden>
               Completion
@@ -1289,6 +1299,12 @@
       </button>
       <button type="button" id="editEventDetailsButton"
               class="event-details-edit">Edit event</button>
+              
+      <button type="button" id="deleteEventDetailsButton"
+        class="event-details-edit">
+  Delete event
+</button> 
+
       <button type="button" id="closeEventDetailsButton"
               class="event-details-close">Close</button>
     </div>
