@@ -1732,3 +1732,14 @@ body {
 .calendar-event[data-calendar-event] {
   cursor: pointer;
 }
+
+.ai-disclaimer {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ai-disclaimer[hidden] {
+  display: none;
+}
