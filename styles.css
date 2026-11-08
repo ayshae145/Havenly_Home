@@ -1722,3 +1722,9 @@ body {
   font-size: 11px;
   padding: 9px 12px;
 }
+
+.mini-event[data-home-event],
+.event-card[data-list-event],
+.calendar-event[data-calendar-event] {
+  cursor: pointer;
+}
