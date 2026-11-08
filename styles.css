@@ -1722,3 +1722,7 @@ body {
   font-size: 11px;
   padding: 9px 12px;
 }
+
+.recommendation[hidden] {
+  display: none;
+}
