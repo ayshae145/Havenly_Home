@@ -1120,7 +1120,7 @@ function openAppliance(applianceId) {
 }
 
 // Ask the Edge Function for a suggestion about the selected appliance.
-async function getMaintenanceRecommendation() {
+async function getMaintenanceRecommendation(forceRefresh = false) {
   const appliance = selectedAppliance;
 
   if (!appliance) {
@@ -1144,7 +1144,8 @@ async function getMaintenanceRecommendation() {
         "recommend-maintenance",
         {
           body: {
-            applianceId: appliance.id
+            applianceId: appliance.id,
+            forceRefresh
           }
         }
       );
@@ -2171,7 +2172,7 @@ $("#deleteDetailApplianceButton").addEventListener("click", () => {
 
 $("#getMaintenanceRecommendationButton").addEventListener(
   "click",
-  getMaintenanceRecommendation
+  () => getMaintenanceRecommendation(true)
 );
 
 // Mobile sidebar and modal buttons.
@@ -2497,6 +2498,11 @@ const {
 }
 
   const wasEditing = applianceBeingEdited !== null;
+  const shouldRefreshSelectedAppliance =
+    wasEditing &&
+    currentPage === "appliance-details" &&
+    selectedAppliance &&
+    String(selectedAppliance.id) === String(applianceForUI.id);
 
 applianceBeingEdited = null;
 
@@ -2504,6 +2510,10 @@ renderAppliances();
 event.target.reset();
 $("#applianceModalTitle").textContent = "Add appliance";
 closeModal("applianceModal");
+
+if (shouldRefreshSelectedAppliance) {
+  openAppliance(applianceForUI.id);
+}
 
   showToast(
   wasEditing ? "Appliance updated" : "Appliance added",
