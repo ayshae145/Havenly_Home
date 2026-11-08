@@ -48,6 +48,8 @@ const pageNames = {
 let currentPage = "home";
 let selectedAppliance = null;
 let applianceBeingEdited = null;
+let maintenanceEventBeingEdited = null;
+let selectedMaintenanceEvent = null;
 let maintenanceApplianceFilter = null;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
@@ -205,6 +207,26 @@ function statusClass(status) {
   return "gray";
 }
 
+function maintenanceEventStatus(event) {
+  if (event.status === "Completed") {
+    return "Completed";
+  }
+
+  const today = getLocalDateString();
+  if (event.date > today) {
+    return "Upcoming";
+  }
+  if (event.date < today) {
+    return "Not completed";
+  }
+  if (!event.timeValue) {
+    return "Upcoming";
+  }
+
+  const scheduledAt = new Date(event.date + "T" + event.timeValue);
+  return scheduledAt >= new Date() ? "Upcoming" : "Not completed";
+}
+
 /* =========================================================
    Page navigation
    ========================================================= */
@@ -301,13 +323,24 @@ function navigate(page, updateHistory = true) {
       applianceId: item.appliance_id,
       date: item.event_date,
       time: formatMaintenanceTime(item.event_time),
+      timeValue: item.event_time || "",
       description: item.description || "",
       status: item.status
     }));
 
+    $("#homeDate").textContent = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }).toUpperCase();
+
     renderCalendar();
     renderEvents();
     renderMiniEvents();
+    if (selectedAppliance) {
+      renderApplianceHistory(selectedAppliance);
+    }
 
   } catch (error) {
     console.error("Error loading maintenance events:", error);
@@ -321,16 +354,23 @@ function navigate(page, updateHistory = true) {
   }
 }
 
-// Draw the small upcoming-events list on the home page.
+// Show the three nearest incomplete events on the home page.
 function renderMiniEvents() {
-  const upcomingEvents = events
-    .filter(event => event.status !== "Completed")
-    .sort((first, second) => first.date.localeCompare(second.date))
+  const homeEvents = events
+    .filter(event => maintenanceEventStatus(event) === "Upcoming")
+    .sort((first, second) =>
+      (first.date + "T" + (first.timeValue || "23:59")).localeCompare(
+        second.date + "T" + (second.timeValue || "23:59")
+      )
+    )
     .slice(0, 3);
 
-  $("#miniEventList").innerHTML = upcomingEvents
+  $("#miniEventList").innerHTML = homeEvents
     .map(event => {
       const date = formatDate(event.date);
+      const eventIndex = events.indexOf(event);
+      const status = maintenanceEventStatus(event);
+      const isCompleted = event.status === "Completed";
 
       return (
         '<div class="mini-event">' +
@@ -339,15 +379,27 @@ function renderMiniEvents() {
             "<b>" + date.day + "</b>" +
           "</div>" +
           '<div class="mini-event-info">' +
-            "<strong>" + escapeHTML(event.name) + "</strong>" +
-            "<span>" + escapeHTML(event.time) + " · " +
+            '<strong class="home-event-name' +
+              (isCompleted ? " completed" : "") + '">' +
+              escapeHTML(event.name) + "</strong>" +
+            "<span>" + escapeHTML(event.time || "Time not set") + " · " +
               escapeHTML(event.category) + "</span>" +
           "</div>" +
-          '<span class="event-category">Upcoming</span>' +
+          '<span class="event-category' +
+            (isCompleted ? " completed" : "") + '">' +
+            escapeHTML(status) + "</span>" +
+          '<button class="event-complete home-event-complete"' +
+            ' data-home-complete="' + eventIndex + '"' +
+            ' aria-label="' +
+              (isCompleted ? "Mark not complete" : "Mark complete") + '"' +
+            ' title="' +
+              (isCompleted ? "Mark not complete" : "Mark complete") + '"' +
+            ' aria-pressed="' + isCompleted + '">' +
+            "✓</button>" +
         "</div>"
       );
     })
-    .join("") || '<p class="maintenance-empty">No upcoming maintenance.</p>';
+    .join("") || '<p class="maintenance-empty">No maintenance events yet.</p>';
 }
 
 function populateEventAppliances() {
@@ -355,17 +407,103 @@ function populateEventAppliances() {
   const selectedValue = select.value;
 
   select.innerHTML =
-    '<option value="">General home maintenance</option>' +
+    '<option value="">No appliance</option>' +
     appliances.map(appliance =>
-      '<option value="' + appliance.id + '">' +
-        appliance.name +
+      '<option value="' + escapeHTML(appliance.id) + '">' +
+        escapeHTML(appliance.name) +
       '</option>'
     ).join("");
 
   select.value = selectedValue;
 }
 
+function renderApplianceHistory(appliance) {
+  const applianceEvents = events
+    .filter(event => String(event.applianceId) === String(appliance.id))
+    .sort((first, second) => second.date.localeCompare(first.date));
+
+  $("#detailHistory").innerHTML = applianceEvents
+    .map(event =>
+      '<article class="appliance-history-item">' +
+        "<strong>" + escapeHTML(event.name) + "</strong>" +
+        "<span>" + escapeHTML(formatDate(event.date).full) + " · " +
+          escapeHTML(maintenanceEventStatus(event)) + "</span>" +
+      "</article>"
+    )
+    .join("") ||
+    '<p class="maintenance-empty">No maintenance history for this appliance yet.</p>';
+}
+
 // Draw the selected month and place maintenance events on their dates.
+function showCalendarEventDetails(eventIndex) {
+  const selectedEvent = events[eventIndex];
+  if (!selectedEvent) return;
+  selectedMaintenanceEvent = selectedEvent;
+
+  document.getElementById("detailsEventName").textContent =
+    selectedEvent.name;
+  const eventDescription = selectedEvent.description.trim();
+  document.getElementById("detailsEventDescription").textContent =
+    eventDescription;
+  document.getElementById("eventDescriptionContainer").hidden =
+    !eventDescription;
+  document.getElementById("detailsEventDate").textContent =
+    selectedEvent.date;
+  document.getElementById("detailsEventTime").textContent =
+    selectedEvent.time || "Not specified";
+
+  const linkedAppliance = appliances.find(
+    appliance => String(appliance.id) === String(selectedEvent.applianceId)
+  );
+  document.getElementById("detailsEventAppliance").textContent =
+    linkedAppliance ? linkedAppliance.name : "No appliance";
+
+  const status = document.getElementById("detailsEventStatus");
+  status.textContent = maintenanceEventStatus(selectedEvent);
+  status.className =
+    selectedEvent.status === "Completed"
+      ? "details-status-completed"
+      : "details-status-upcoming";
+  const completionButton = $("#toggleEventCompletionButton");
+  const isCompleted = selectedEvent.status === "Completed";
+  completionButton.textContent =
+    isCompleted ? "Mark not complete" : "Mark complete";
+  completionButton.className =
+    "event-details-edit event-details-completion " +
+    (isCompleted ? "mark-not-complete" : "mark-complete");
+  completionButton.setAttribute("aria-pressed", String(isCompleted));
+
+  document.getElementById("calendarDayModal").hidden = true;
+  document.getElementById("eventDetailsModal").hidden = false;
+}
+
+function showCalendarDayEvents(date) {
+  const dayEvents = events.filter(event => event.date === date);
+  const formattedDate = new Date(date + "T12:00:00").toLocaleDateString(
+    "en-US",
+    { weekday: "long", month: "long", day: "numeric", year: "numeric" }
+  );
+
+  $("#calendarDayTitle").textContent = formattedDate;
+  $("#calendarDayEvents").innerHTML = dayEvents
+    .map((event, index) => {
+      const eventIndex = events.indexOf(event);
+      let eventColor = "";
+      if (index % 3 === 1) eventColor = " peach-event";
+      if (index % 3 === 2) eventColor = " purple-event";
+
+      return (
+        '<button type="button" class="calendar-event' + eventColor +
+        (event.status === "Completed" ? " completed" : "") + '"' +
+        ' data-calendar-event="' + eventIndex + '">' +
+        escapeHTML(event.name) +
+        "</button>"
+      );
+    })
+    .join("");
+  $("#calendarDayModal").hidden = false;
+}
+
 function renderCalendar() {
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const year = calendarMonth.getFullYear();
@@ -399,28 +537,40 @@ function renderCalendar() {
       today.getDate() === day;
 
     const eventMarkup = dayEvents
-      .map((event, index) => {
-        let eventColor = "";
+  .slice(0, 1)
+  .map((event, index) => {
+    let eventColor = "";
 
-        if (index % 3 === 1) {
-          eventColor = " peach-event";
-        } else if (index % 3 === 2) {
-          eventColor = " purple-event";
-        }
+    if (index % 3 === 1) {
+      eventColor = " peach-event";
+    } else if (index % 3 === 2) {
+      eventColor = " purple-event";
+    }
 
-        return (
-          '<span class="calendar-event' + eventColor + '"' +
-            ' title="' + escapeHTML(event.description || event.name) + '">' +
-            escapeHTML(event.name) +
-          "</span>"
-        );
-      })
-      .join("");
+    const eventIndex = events.indexOf(event);
+
+    return (
+      '<button type="button" class="calendar-event' + eventColor +
+      (event.status === "Completed" ? " completed" : "") + '"' +
+        ' data-calendar-event="' + eventIndex + '"' +
+        ' title="View event details">' +
+        escapeHTML(event.name) +
+      "</button>"
+    );
+  })
+  .join("");
+    const moreEventsMarkup = dayEvents.length > 1
+      ? '<button type="button" class="calendar-more" ' +
+        'data-calendar-more="' + isoDate + '" aria-label="Show ' +
+        (dayEvents.length - 1) + ' more events">' +
+        "+" + (dayEvents.length - 1) + " more</button>"
+      : "";
 
     cells.push(
       '<div class="calendar-cell' + (isToday ? " today" : "") + '">' +
         '<span class="day-number">' + day + "</span>" +
         eventMarkup +
+        moreEventsMarkup +
       "</div>"
     );
   }
@@ -434,21 +584,31 @@ function renderCalendar() {
     "en-US",
     { month: "long", year: "numeric" }
   );
+  $("#listMonthTitle").textContent = $("#calendarMonthTitle").textContent;
   $("#calendarMonthCount").textContent =
     monthEvents.length + " maintenance " +
-    (monthEvents.length === 1 ? "item" : "items") + " this month";
+    (monthEvents.length === 1 ? "event" : "events") + " this month";
   $("#calendarGrid").innerHTML = cells.join("");
-  renderMiniEvents();
+
+renderMiniEvents();
 }
 
 // Draw the maintenance list in date order and connect completion buttons.
 function renderEvents() {
   const sortedEvents = events
     .filter(event =>
-      !maintenanceApplianceFilter ||
-      String(event.applianceId) === String(maintenanceApplianceFilter)
+      new Date(event.date + "T12:00:00").getFullYear() ===
+        calendarMonth.getFullYear() &&
+      new Date(event.date + "T12:00:00").getMonth() ===
+        calendarMonth.getMonth() &&
+      (!maintenanceApplianceFilter ||
+        String(event.applianceId) === String(maintenanceApplianceFilter))
     )
     .sort((first, second) => first.date.localeCompare(second.date));
+
+  $("#listMonthCount").textContent =
+    sortedEvents.length + " maintenance " +
+    (sortedEvents.length === 1 ? "event" : "events") + " this month";
 
   $("#eventList").innerHTML = sortedEvents
     .map(event => {
@@ -463,11 +623,15 @@ function renderEvents() {
 
       const eventIndex = events.indexOf(event);
       const completionControl =
-        event.status !== "Completed"
-          ? '<button class="event-complete" data-complete="' +
-            eventIndex +
-            '" title="Mark completed">✓</button>'
-          : '<span class="event-complete">✓</span>';
+  '<button class="event-complete" data-complete="' +
+  eventIndex +
+  '" title="' +
+  (event.status === "Completed" ? "Mark not completed" : "Mark completed") +
+  '" aria-label="' +
+  (event.status === "Completed" ? "Mark not completed" : "Mark completed") +
+  '" aria-pressed="' +
+  (event.status === "Completed") +
+  '">✓</button>';
 
       return (
         '<div class="event-card">' +
@@ -476,14 +640,17 @@ function renderEvents() {
             "<b>" + date.day + "</b>" +
           "</div>" +
           '<div class="event-card-body">' +
-            "<strong>" + escapeHTML(event.name) + "</strong>" +
+            '<strong class="event-list-event-name' +
+              (event.status === "Completed" ? " completed" : "") +
+              '">' + escapeHTML(event.name) + "</strong>" +
             "<small>" + escapeHTML(event.category) + " · " +
               escapeHTML(event.time) + escapeHTML(applianceLabel) + "</small>" +
             '<p class="event-description">' +
               escapeHTML(event.description || "") + "</p>" +
           "</div>" +
-          '<span class="status-pill ' + statusClass(event.status) + '">' +
-            escapeHTML(event.status) +
+          '<span class="status-pill ' +
+            statusClass(maintenanceEventStatus(event)) + '">' +
+            escapeHTML(maintenanceEventStatus(event)) +
           "</span>" +
           completionControl +
         "</div>"
@@ -507,26 +674,8 @@ function renderEvents() {
       button.disabled = true;
 
       try {
-        const { data: userData, error: userError } =
-          await supabaseClient.auth.getUser();
-
-        if (userError || !userData.user) {
-          throw userError || new Error("Please sign in.");
-        }
-
-        const { error } = await supabaseClient
-          .from("maintenance_events")
-          .update({
-            status: "Completed",
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", maintenanceEvent.id)
-          .eq("user_id", userData.user.id);
-
-        if (error) throw error;
-
-        await loadMaintenanceEvents();
-        showToast("Task completed", "Maintenance history updated.");
+        await toggleMaintenanceCompletion(maintenanceEvent);
+        showToast("Task updated", "Maintenance status updated.");
       } catch (error) {
         console.error("Error completing event:", error);
         button.disabled = false;
@@ -534,6 +683,28 @@ function renderEvents() {
       }
     });
   });
+}
+
+async function toggleMaintenanceCompletion(maintenanceEvent) {
+  const { data: userData, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !userData.user) {
+    throw userError || new Error("Please sign in.");
+  }
+
+  const { error } = await supabaseClient
+    .from("maintenance_events")
+    .update({
+      status: maintenanceEvent.status === "Completed" ? "Upcoming" : "Completed",
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", maintenanceEvent.id)
+    .eq("user_id", userData.user.id);
+
+  if (error) throw error;
+
+  await loadMaintenanceEvents();
 }
 
 
@@ -813,10 +984,6 @@ function renderAppliances() {
               "<span>Last maintenance</span>" +
               "<strong>" + appliance.last + "</strong>" +
             "</div>" +
-            "<div>" +
-              "<span>Next recommended</span>" +
-              "<strong>" + appliance.next + "</strong>" +
-            "</div>" +
             '<span class="appliance-arrow">→</span>' +
           "</div>" +
         "</article>"
@@ -899,6 +1066,7 @@ function openAppliance(applianceId) {
   }
 
   $("#detailMeta").textContent = applianceDetails.join(" · ");
+  renderApplianceHistory(selectedAppliance);
 
   $("#detailIcon").className =
     "appliance-large-icon " + selectedAppliance.tone;
@@ -1025,6 +1193,157 @@ let maxConversation = [];
 let savedMaxConversationId = null;
 let maxConversationHasUnsavedChanges = false;
 
+// Show an AI-proposed event without saving it yet.
+function showMaxEventProposal(messageRow, proposal) {
+  const bubble = messageRow.querySelector(".chat-bubble");
+
+  const card = document.createElement("div");
+  card.className = "max-event-proposal";
+
+  const title = document.createElement("strong");
+  title.textContent = "Proposed calendar event";
+
+  const details = document.createElement("p");
+
+  const matchingAppliance = appliances.find(
+    appliance =>
+      String(appliance.id) === String(proposal.appliance_id)
+  );
+
+  details.textContent = [
+    proposal.name,
+    "Date: " + proposal.event_date,
+    "Time: " + (proposal.event_time || "Not specified"),
+    "Appliance: " + (matchingAppliance?.name || "General"),
+    proposal.description
+  ].filter(Boolean).join("\n");
+
+  const actions = document.createElement("div");
+  actions.className = "max-proposal-actions";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.textContent = "Cancel";
+  cancelButton.className = "button button-ghost";
+
+  const confirmButton = document.createElement("button");
+  confirmButton.textContent = "Confirm event";
+  confirmButton.className = "button button-primary";
+
+  cancelButton.addEventListener("click", () => {
+    card.remove();
+    addChatMessage("Event canceled. Nothing was saved.", "max");
+  });
+
+  confirmButton.addEventListener("click", async () => {
+    confirmButton.disabled = true;
+    cancelButton.disabled = true;
+    confirmButton.textContent = "Saving...";
+
+    try {
+      const { data: userData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+      if (authError || !userData.user) {
+        throw authError || new Error("Please sign in.");
+      }
+
+      // Revalidate the proposal before inserting it.
+      const validCategories = [
+        "HVAC", "Kitchen", "Laundry", "Plumbing", "General"
+      ];
+
+      const validDate = value => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const date = new Date(value + "T12:00:00Z");
+        return !Number.isNaN(date.getTime()) &&
+          date.toISOString().slice(0, 10) === value;
+      };
+
+      const validTime = proposal.event_time == null ||
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(proposal.event_time);
+
+      if (
+        typeof proposal.name !== "string" ||
+        !proposal.name.trim() ||
+        proposal.name.length > 150 ||
+        !validCategories.includes(proposal.category) ||
+        !validDate(proposal.event_date) ||
+        !validTime ||
+        typeof proposal.description !== "string" ||
+        proposal.description.length > 2000
+      ) {
+        throw new Error("The proposed event contains invalid details.");
+      }
+
+      if (proposal.appliance_id != null) {
+        const { data: ownedAppliance, error: applianceError } =
+          await supabaseClient
+            .from("appliances")
+            .select("appliance_id")
+            .eq("appliance_id", proposal.appliance_id)
+            .eq("user_id", userData.user.id)
+            .maybeSingle();
+
+        if (applianceError) throw applianceError;
+
+        if (!ownedAppliance) {
+          throw new Error("This appliance is not available.");
+        }
+      }
+
+      const { error } = await supabaseClient
+        .from("maintenance_events")
+        .insert({
+          user_id: userData.user.id,
+          name: proposal.name.trim(),
+          category: proposal.category,
+          appliance_id: proposal.appliance_id,
+          event_date: proposal.event_date,
+          event_time: proposal.event_time,
+          description: proposal.description,
+          status: "Upcoming"
+        });
+
+      if (error) throw error;
+
+      const [year, month] = proposal.event_date
+        .split("-")
+        .map(Number);
+
+      calendarMonth = new Date(year, month - 1, 1);
+
+      card.remove();
+
+      await loadMaintenanceEvents();
+
+      addChatMessage(
+        "Event saved! You can now find it in your Maintenance Log.",
+        "max"
+      );
+
+      showToast("Event added", "Max's proposed event was saved.");
+
+    } catch (error) {
+      console.error("Max event creation error:", error);
+
+      showToast(
+        "Error",
+        error.message || "Unable to save the event."
+      );
+
+      confirmButton.disabled = false;
+      cancelButton.disabled = false;
+      confirmButton.textContent = "Confirm event";
+    }
+  });
+
+  actions.append(cancelButton, confirmButton);
+  card.append(title, details, actions);
+  bubble.appendChild(card);
+
+  $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
+}
+
 // Prevent overlapping AI requests.
 let maxIsResponding = false;
 
@@ -1078,6 +1397,13 @@ async function askMax(text) {
       ".chat-bubble"
     ).textContent = data.reply;
 
+    if (data.proposedEvent) {
+  showMaxEventProposal(
+    pendingMessage,
+    data.proposedEvent
+  );
+}
+
     maxConversation = [
       ...nextConversation,
       {
@@ -1107,7 +1433,109 @@ async function askMax(text) {
    ========================================================= */
 
 // Handle page links, modal close buttons, and backdrop clicks in one place.
-document.addEventListener("click", event => {
+document.addEventListener("click", async event => {
+  const moreEventsButton = event.target.closest("[data-calendar-more]");
+  if (moreEventsButton) {
+    showCalendarDayEvents(moreEventsButton.dataset.calendarMore);
+    return;
+  }
+
+  const calendarEventButton = event.target.closest("[data-calendar-event]");
+  if (calendarEventButton) {
+    showCalendarEventDetails(
+      Number(calendarEventButton.dataset.calendarEvent)
+    );
+    return;
+  }
+
+  if (
+    event.target.closest("#closeCalendarDayModal") ||
+    event.target.id === "calendarDayModal"
+  ) {
+    $("#calendarDayModal").hidden = true;
+    return;
+  }
+
+  const homeCompletionButton = event.target.closest("[data-home-complete]");
+  if (homeCompletionButton) {
+    const maintenanceEvent =
+      events[Number(homeCompletionButton.dataset.homeComplete)];
+    if (!maintenanceEvent) return;
+
+    homeCompletionButton.disabled = true;
+    try {
+      await toggleMaintenanceCompletion(maintenanceEvent);
+      showToast("Task updated", "Maintenance status updated.");
+    } catch (error) {
+      console.error("Error completing event from home:", error);
+      homeCompletionButton.disabled = false;
+      showToast("Error", error.message || "Unable to update event.");
+    }
+    return;
+  }
+
+  if (event.target.closest("#toggleEventCompletionButton")) {
+    const button = $("#toggleEventCompletionButton");
+    if (!selectedMaintenanceEvent) return;
+
+    button.disabled = true;
+    try {
+      await toggleMaintenanceCompletion(selectedMaintenanceEvent);
+      selectedMaintenanceEvent = events.find(
+        maintenanceEvent =>
+          maintenanceEvent.id === selectedMaintenanceEvent.id
+      ) || null;
+
+      if (selectedMaintenanceEvent) {
+        const status = $("#detailsEventStatus");
+        status.textContent = maintenanceEventStatus(selectedMaintenanceEvent);
+        status.className =
+          selectedMaintenanceEvent.status === "Completed"
+            ? "details-status-completed"
+            : "details-status-upcoming";
+        button.textContent =
+          selectedMaintenanceEvent.status === "Completed"
+            ? "Mark not complete"
+            : "Mark complete";
+        button.className =
+          "event-details-edit event-details-completion " +
+          (selectedMaintenanceEvent.status === "Completed"
+            ? "mark-not-complete"
+            : "mark-complete");
+        button.setAttribute(
+          "aria-pressed",
+          String(selectedMaintenanceEvent.status === "Completed")
+        );
+      }
+
+      showToast("Task updated", "Maintenance status updated.");
+    } catch (error) {
+      console.error("Error completing event:", error);
+      showToast("Error", error.message || "Unable to update event.");
+    } finally {
+      button.disabled = false;
+    }
+    return;
+  }
+
+  if (event.target.closest("#editEventDetailsButton")) {
+    if (selectedMaintenanceEvent) {
+      document.getElementById("eventDetailsModal").hidden = true;
+      prepareEventForm(selectedMaintenanceEvent);
+      openModal("eventModal");
+    }
+    return;
+  }
+
+  // Close the event details popup.
+  if (
+    event.target.closest("#closeEventDetails") ||
+    event.target.closest("#closeEventDetailsButton") ||
+    event.target.id === "eventDetailsModal"
+  ) {
+    document.getElementById("eventDetailsModal").hidden = true;
+    return;
+  }
   const pageTarget = event.target.closest("[data-page]");
 
   if (pageTarget) {
@@ -1529,18 +1957,40 @@ $("#menuButton").addEventListener("click", () => {
 });
 
 $("#openEventModal").addEventListener("click", () => {
-  populateEventAppliances();
-  $("#eventForm").elements["date"].value =
-  getLocalDateString();
+  prepareEventForm();
   openModal("eventModal");
 });
 
 $("#floatingAdd").addEventListener("click", () => {
-  populateEventAppliances();
-  $("#eventForm").elements["date"].value =
-  getLocalDateString();
+  prepareEventForm();
   openModal("eventModal");
 });
+
+function prepareEventForm(maintenanceEvent = null) {
+  const form = $("#eventForm");
+  const submitButton = form.querySelector('[type="submit"]');
+
+  form.reset();
+  populateEventAppliances();
+  maintenanceEventBeingEdited = maintenanceEvent?.id || null;
+  $("#eventCompletionField").hidden = !maintenanceEvent;
+  $("#eventModal").querySelector("h2").textContent =
+    maintenanceEvent ? "Edit maintenance event" : "Add maintenance event";
+  submitButton.textContent = maintenanceEvent ? "Save changes" : "Save event";
+
+  if (!maintenanceEvent) {
+    form.elements["date"].value = getLocalDateString();
+    return;
+  }
+
+  form.elements["name"].value = maintenanceEvent.name;
+  form.elements["applianceId"].value = maintenanceEvent.applianceId || "";
+  form.elements["date"].value = maintenanceEvent.date;
+  form.elements["time"].value = maintenanceEvent.timeValue;
+  form.elements["status"].value =
+    maintenanceEvent.status === "Completed" ? "Completed" : "Upcoming";
+  form.elements["description"].value = maintenanceEvent.description;
+}
 
 $$("[data-month-offset]").forEach(button => {
   button.addEventListener("click", () => {
@@ -1548,13 +1998,8 @@ $$("[data-month-offset]").forEach(button => {
       calendarMonth.getMonth() + Number(button.dataset.monthOffset)
     );
     renderCalendar();
+    renderEvents();
   });
-});
-
-$("#calendarTodayButton").addEventListener("click", () => {
-  const today = new Date();
-  calendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  renderCalendar();
 });
 
 $("#eventForm").querySelector('[name="date"]').value = getLocalDateString();
@@ -1574,7 +2019,6 @@ $("#viewMaintenanceHistoryButton").addEventListener("click", () => {
 
   $("#calendarView").classList.add("hidden");
   $("#listView").classList.remove("hidden");
-  $("#calendarTodayButton").classList.add("hidden");
 
   $$(".segment").forEach(button => {
     button.classList.toggle("active", button.dataset.view === "list");
@@ -1633,10 +2077,6 @@ $$(".segment").forEach(button => {
       "hidden",
       button.dataset.view !== "list"
     );
-    $("#calendarTodayButton").classList.toggle(
-      "hidden",
-      button.dataset.view !== "calendar"
-    );
   });
 });
 
@@ -1671,24 +2111,36 @@ $("#eventForm").addEventListener("submit", async event => {
       throw new Error("Please select a valid appliance.");
     }
 
-    const newEvent = {
-      user_id: userData.user.id,
+    const eventChanges = {
       name: String(formData.get("name") || "").trim(),
-      category: formData.get("category"),
+      category: maintenanceEventBeingEdited
+        ? events.find(item => item.id === maintenanceEventBeingEdited)?.category || "General"
+        : "General",
       appliance_id: applianceId,
       event_date: formData.get("date"),
       event_time: formData.get("time") || null,
       description: String(formData.get("description") || "").trim(),
-      status: "Upcoming"
+      status: formData.get("status") || "Upcoming"
     };
 
-    const { error } = await supabaseClient
-      .from("maintenance_events")
-      .insert(newEvent);
+    let saveQuery = supabaseClient.from("maintenance_events");
+    if (maintenanceEventBeingEdited) {
+      saveQuery = saveQuery
+        .update(eventChanges)
+        .eq("id", maintenanceEventBeingEdited)
+        .eq("user_id", userData.user.id);
+    } else {
+      saveQuery = saveQuery.insert({
+        ...eventChanges,
+        user_id: userData.user.id
+      });
+    }
+
+    const { error } = await saveQuery;
 
     if (error) throw error;
 
-    const [year, month] = String(newEvent.event_date)
+    const [year, month] = String(eventChanges.event_date)
     .split("-")
     .map(Number);
 
@@ -1697,11 +2149,16 @@ $("#eventForm").addEventListener("submit", async event => {
     form.reset();
     closeModal("eventModal");
 
+    const wasEditing = Boolean(maintenanceEventBeingEdited);
+    maintenanceEventBeingEdited = null;
+    selectedMaintenanceEvent = null;
     await loadMaintenanceEvents();
 
     showToast(
-      "Event added",
-      "Your maintenance event has been saved."
+      wasEditing ? "Event updated" : "Event added",
+      wasEditing
+        ? "Your maintenance event has been updated."
+        : "Your maintenance event has been saved."
     );
 
   } catch (error) {
@@ -1713,7 +2170,9 @@ $("#eventForm").addEventListener("submit", async event => {
     );
   } finally {
     saveButton.disabled = false;
-    saveButton.textContent = "Save event";
+    saveButton.textContent = maintenanceEventBeingEdited
+      ? "Save changes"
+      : "Save event";
   }
 
 });
@@ -1828,17 +2287,6 @@ $("#categoryFilter").addEventListener("change", renderAppliances);
 /* =========================================================
    Assistant and professional page controls
    ========================================================= */
-
-// Open Maintenance Max from an appliance detail page.
-$("#askMaxButton").addEventListener("click", () => {
-  navigate("assistant");
-
-  setTimeout(() => {
-    if (selectedAppliance) {
-      askMax("I have a question about my " + selectedAppliance.name + ".");
-    }
-  }, 100);
-});
 
 // Handle the suggested Maintenance Max prompts.
 $$("[data-prompt]").forEach(button => {
@@ -2377,4 +2825,3 @@ async function checkLoginSession() {
 
 // Check for an existing session when the page first loads.
 checkLoginSession();
-

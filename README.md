@@ -46,3 +46,7 @@ The "Add an Appliance" button is working fully. It is located under the "My Appl
 7. Navigate to the My Appliances tab to test the vertical slice.
 
 8. Click Add appliance, enter the appliance information, and submit the form. The appliance should be saved and displayed on the My Appliances page.
+
+## Architecture Diagram:
+
+![Archtiedture Diagram](images/architecture.png)
