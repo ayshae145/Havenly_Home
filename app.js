@@ -1112,7 +1112,11 @@ function openAppliance(applianceId) {
 
   // Enable deletion after an appliance has been selected.
   $("#deleteDetailApplianceButton").disabled = false;
+
+  $("#maintenanceRecommendationDisclaimer").hidden = true;
+
   navigate("appliance-details");
+  getMaintenanceRecommendation();
 }
 
 // Ask the Edge Function for a suggestion about the selected appliance.
@@ -1126,11 +1130,13 @@ async function getMaintenanceRecommendation() {
   const button = $("#getMaintenanceRecommendationButton");
   const message = $("#maintenanceRecommendationMessage");
   const result = $("#maintenanceRecommendationResult");
+  const disclaimer = $("#maintenanceRecommendationDisclaimer");
 
   button.disabled = true;
   button.textContent = "Getting suggestion...";
   message.textContent = "Reviewing this appliance’s care history...";
   result.hidden = true;
+  disclaimer.hidden = true;
 
   try {
     const { data, error } =
@@ -1190,6 +1196,7 @@ async function getMaintenanceRecommendation() {
         : "";
 
     result.hidden = false;
+    disclaimer.hidden = false;
     message.textContent = "Suggestion generated.";
   } catch (error) {
     console.error("Maintenance recommendation error:", error);
@@ -1200,7 +1207,7 @@ async function getMaintenanceRecommendation() {
         : "Could not get a suggestion. Please try again.";
   } finally {
     button.disabled = !selectedAppliance;
-    button.textContent = "Get a suggestion";
+    button.textContent = "Refresh suggestion";
   }
 }
 
