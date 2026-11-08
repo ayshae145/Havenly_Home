@@ -1072,8 +1072,6 @@ function openAppliance(applianceId) {
     "appliance-large-icon " + selectedAppliance.tone;
   $("#detailIcon").textContent = selectedAppliance.icon;
 
-  $("#detailLast").textContent = selectedAppliance.last;
-  $("#detailNext").textContent = selectedAppliance.next;
   // Enable deletion after an appliance has been selected.
   $("#deleteDetailApplianceButton").disabled = false;
   navigate("appliance-details");
