@@ -1048,8 +1048,14 @@ function openAppliance(applianceId) {
     return;
   }
 
+  $("#getMaintenanceRecommendationButton").disabled = false;
+  $("#maintenanceRecommendationResult").hidden = true;
+
+  $("#maintenanceRecommendationMessage").textContent =
+    "Select “Get a suggestion” to receive a maintenance recommendation.";
+
   $("#editDetailApplianceButton").disabled = false;
-  
+
   $("#deleteDetailApplianceButton").disabled = false;
 
   $("#detailName").textContent = selectedAppliance.name;
@@ -1077,6 +1083,95 @@ function openAppliance(applianceId) {
   // Enable deletion after an appliance has been selected.
   $("#deleteDetailApplianceButton").disabled = false;
   navigate("appliance-details");
+}
+
+// Ask the Edge Function for a suggestion about the selected appliance.
+async function getMaintenanceRecommendation() {
+  const appliance = selectedAppliance;
+
+  if (!appliance) {
+    return;
+  }
+
+  const button = $("#getMaintenanceRecommendationButton");
+  const message = $("#maintenanceRecommendationMessage");
+  const result = $("#maintenanceRecommendationResult");
+
+  button.disabled = true;
+  button.textContent = "Getting suggestion...";
+  message.textContent = "Reviewing this appliance’s care history...";
+  result.hidden = true;
+
+  try {
+    const { data, error } =
+      await supabaseClient.functions.invoke(
+        "recommend-maintenance",
+        {
+          body: {
+            applianceId: appliance.id
+          }
+        }
+      );
+
+    if (error) {
+      let errorDetails = null;
+
+      if (error.context instanceof Response) {
+        errorDetails = await error.context
+          .json()
+          .catch(() => null);
+      }
+
+      throw new Error(
+        errorDetails?.error || error.message
+      );
+    }
+
+    // Ignore a late response if the user opened another appliance.
+    if (
+      !selectedAppliance ||
+      String(selectedAppliance.id) !== String(appliance.id)
+    ) {
+      return;
+    }
+
+    const recommendation = data?.recommendation;
+
+    if (!recommendation) {
+      throw new Error("The function returned no suggestion.");
+    }
+
+    $("#maintenanceRecommendationStep").textContent =
+      recommendation.next_step;
+
+    $("#maintenanceRecommendationReason").textContent =
+      recommendation.reason;
+
+    $("#maintenanceRecommendationUrgency").textContent =
+      "Priority: " + recommendation.urgency;
+
+    $("#maintenanceRecommendationTimeframe").textContent =
+      "Suggested timeframe: " +
+      recommendation.suggested_timeframe;
+
+    $("#maintenanceRecommendationMoreInfo").textContent =
+      recommendation.needs_more_information
+        ? "For a more specific suggestion, add the exact model details or check the appliance manual."
+        : "";
+
+    result.hidden = false;
+    message.textContent = "Suggestion generated.";
+  } catch (error) {
+    console.error("Maintenance recommendation error:", error);
+
+    message.textContent =
+      error instanceof Error
+        ? error.message
+        : "Could not get a suggestion. Please try again.";
+  } finally {
+    button.disabled = !selectedAppliance;
+    button.textContent = "Get a suggestion";
+  }
 }
 
 /* =========================================================
@@ -1990,6 +2085,12 @@ $("#deleteDetailApplianceButton").addEventListener("click", () => {
     openDeleteApplianceModal(selectedAppliance.id);
   }
 });
+
+$("#getMaintenanceRecommendationButton").addEventListener(
+  "click",
+  getMaintenanceRecommendation
+);
+
 // Mobile sidebar and modal buttons.
 $("#menuButton").addEventListener("click", () => {
   $("#sidebar").classList.toggle("open");

@@ -496,7 +496,41 @@
                     <h3>Recommended care</h3>
                   </div>
                 </div>
-                <div id="detailRecommendations"></div>
+                <div id="detailRecommendations">
+                  <button
+                    class="button button-primary"
+                    id="getMaintenanceRecommendationButton"
+                    type="button"
+                    disabled
+                  >
+                    Get a suggestion
+                  </button>
+
+                  <p
+                    id="maintenanceRecommendationMessage"
+                    class="maintenance-empty"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    Select an appliance to get a maintenance suggestion.
+                  </p>
+
+                  <article
+                    class="recommendation"
+                    id="maintenanceRecommendationResult"
+                    hidden
+                  >
+                    <span class="rec-icon" aria-hidden="true">✦</span>
+
+                    <div>
+                      <strong id="maintenanceRecommendationStep"></strong>
+                      <span id="maintenanceRecommendationReason"></span>
+                      <span id="maintenanceRecommendationUrgency"></span>
+                      <span id="maintenanceRecommendationTimeframe"></span>
+                      <span id="maintenanceRecommendationMoreInfo"></span>
+                    </div>
+                  </article>
+                </div>
               </div>
             </div>
           </section>
