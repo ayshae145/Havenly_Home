@@ -2575,39 +2575,6 @@ $("#findProfessionals").addEventListener("click", () => {
   showToast("Search updated", "Showing trusted professionals near you.");
 });
 
-$("#bookService").addEventListener("click", () => {
-  navigate("professional-profile");
-  showToast("Ready to book", "Choose a date and time below.");
-});
-
-// Select an available appointment date and time.
-$$(".date-option").forEach(button => {
-  button.addEventListener("click", () => {
-    $$(".date-option").forEach(option => {
-      option.classList.remove("active");
-    });
-
-    button.classList.add("active");
-  });
-});
-
-$$(".time-options button").forEach(button => {
-  button.addEventListener("click", () => {
-    $$(".time-options button").forEach(option => {
-      option.classList.remove("selected");
-    });
-
-    button.classList.add("selected");
-  });
-});
-
-$("#selectTime").addEventListener("click", () => {
-  showToast(
-    "Appointment selected",
-    "Evergreen Home Services will confirm shortly."
-  );
-});
-
 // Update the selected star rating.
 $$("#starInput button").forEach((button, selectedIndex) => {
   button.addEventListener("click", () => {
