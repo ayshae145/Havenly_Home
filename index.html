@@ -555,57 +555,43 @@
               </div>
             </div>
 
-            <div class="category-row">
-              <button class="category-chip active">
-                <span>▤</span>
-                Appliances
-              </button>
-              <button class="category-chip">
-                <span>♧</span>
-                Plumbing
-              </button>
-              <button class="category-chip">
-                <span>♨</span>
-                Heating &amp; HVAC
-              </button>
-              <button class="category-chip">
-                <span>ϟ</span>
-                Electrical
-              </button>
-              <button class="category-chip">
-                <span>⌂</span>
-                General repair
-              </button>
-            </div>
-
             <div class="service-search panel">
               <div class="field">
-                <label>Where do you need service?</label>
+                <label for="serviceLocation">Where do you need service?</label>
                 <div class="input-wrap">
                   <span>⌖</span>
-                  <input id="serviceLocation" value="Boulder, CO">
+                  <input
+                    id="serviceLocation"
+                    placeholder="City or ZIP code"
+                    autocomplete="off"
+                  >
                 </div>
               </div>
 
               <div class="field">
-                <label>What do you need help with?</label>
+                <label for="serviceNeed">What do you need help with?</label>
                 <div class="input-wrap">
                   <span>⌕</span>
-                  <input id="serviceNeed" value="Refrigerator repair">
-                </div>
-              </div>
-
-              <div class="field date-field">
-                <label>When do you need service?</label>
-                <div class="input-wrap">
-                  <span>▣</span>
-                  <input type="date" value="2026-10-03">
+                  <input
+                    id="serviceNeed"
+                    placeholder="e.g. refrigerator repair"
+                    list="serviceNeedSuggestions"
+                    autocomplete="off"
+                  >
+                  <datalist id="serviceNeedSuggestions">
+                    <option value="Refrigerator repair"></option>
+                    <option value="Leaky faucet repair"></option>
+                    <option value="Air conditioner maintenance"></option>
+                    <option value="Water heater repair"></option>
+                    <option value="Electrical outlet repair"></option>
+                  </datalist>
                 </div>
               </div>
 
               <button
                 class="button button-primary"
                 id="findProfessionals"
+                type="button"
               >
                 Find professionals <span>→</span>
               </button>
@@ -614,9 +600,9 @@
             <div class="results-heading">
               <div>
                 <span class="eyebrow">RECOMMENDED FOR YOU</span>
-                <h2>Professionals near Boulder</h2>
+                <h2 id="resultsTitle">Search for professionals</h2>
               </div>
-              <span class="result-count">12 results</span>
+              <span class="result-count" id="resultsCount"></span>
             </div>
 
             <div class="professional-layout">
@@ -631,17 +617,14 @@
             </button>
 
             <div class="profile-hero">
-              <div class="company-logo">E</div>
+              <div class="company-logo" id="profLogo">?</div>
 
               <div class="profile-title">
-                <span class="eyebrow">
-                  APPLIANCE SPECIALIST · BOULDER, CO
-                </span>
-                <h1>Evergreen Home Services</h1>
+                <span class="eyebrow" id="profType"></span>
+                <h1 id="profName"></h1>
                 <div class="rating-line">
-                  <strong>★ 4.9</strong>
-                  <span>128 reviews</span>
-                  <span class="verified">✓ Verified</span>
+                  <strong id="profGoogleRating"></strong>
+                  <span id="profHavenlyRating"></span>
                 </div>
               </div>
             </div>
@@ -651,66 +634,12 @@
                 <div class="panel">
                   <div class="panel-heading">
                     <div>
-                      <span class="eyebrow">WHAT WE DO</span>
-                      <h3>Services offered</h3>
-                    </div>
-                  </div>
-
-                  <div class="service-tags">
-                    <span>Refrigerator repair</span>
-                    <span>Dishwasher repair</span>
-                    <span>Washer / dryer repair</span>
-                    <span>Preventative maintenance</span>
-                  </div>
-
-                  <p class="profile-copy">
-                    We’re a small, local team dedicated to keeping your home
-                    running beautifully. Our technicians explain what’s
-                    happening in plain language and leave your space cleaner
-                    than we found it.
-                  </p>
-                </div>
-
-                <div class="panel">
-                  <div class="panel-heading">
-                    <div>
                       <span class="eyebrow">WHAT CUSTOMERS SAY</span>
-                      <h3>Recent reviews</h3>
+                      <h3>Havenly reviews</h3>
                     </div>
-                    <button class="text-button">
-                      Read all <span>→</span>
-                    </button>
                   </div>
 
-                  <div class="review">
-                    <div class="review-top">
-                      <span class="avatar">JM</span>
-                      <div>
-                        <strong>Jordan M.</strong>
-                        <span>Dishwasher repair · Sep 12, 2026</span>
-                      </div>
-                      <b>★★★★★</b>
-                    </div>
-                    <p>
-                      “Technician arrived on time and explained exactly what
-                      needed to be replaced. Friendly, tidy, and fair.”
-                    </p>
-                  </div>
-
-                  <div class="review">
-                    <div class="review-top">
-                      <span class="avatar sand">KL</span>
-                      <div>
-                        <strong>Kim L.</strong>
-                        <span>Refrigerator repair · Aug 28, 2026</span>
-                      </div>
-                      <b>★★★★★</b>
-                    </div>
-                    <p>
-                      “They had the part with them and got our fridge back up
-                      and running in one visit.”
-                    </p>
-                  </div>
+                  <div id="profHavenlyReviews"></div>
                 </div>
 
                 <div class="panel leave-review">
@@ -720,26 +649,26 @@
                   </div>
 
                   <div class="star-input" id="starInput">
-                    <button>★</button>
-                    <button>★</button>
-                    <button>★</button>
-                    <button>★</button>
-                    <button>★</button>
+                    <button type="button" aria-label="1 star">★</button>
+                    <button type="button" aria-label="2 stars">★</button>
+                    <button type="button" aria-label="3 stars">★</button>
+                    <button type="button" aria-label="4 stars">★</button>
+                    <button type="button" aria-label="5 stars">★</button>
                   </div>
 
                   <div class="review-fields">
-                    <input placeholder="Service performed">
-                    <select>
+                    <input id="reviewService" placeholder="Service performed">
+                    <select id="reviewSatisfaction">
                       <option>Very satisfied</option>
                       <option>Satisfied</option>
                       <option>Neutral</option>
                       <option>Not Satisfied</option>
                       <option>Poor Service</option>
                     </select>
-                    <textarea placeholder="Tell us about your experience..."></textarea>
+                    <textarea id="reviewComment" placeholder="Tell us about your experience..."></textarea>
                   </div>
 
-                  <button class="button button-primary" id="submitReview">
+                  <button class="button button-primary" id="submitReview" type="button">
                     Submit review
                   </button>
                 </div>
@@ -752,15 +681,14 @@
                   <div class="contact-row">
                     <span>⌖</span>
                     <div>
-                      <strong>1420 Pearl St</strong>
-                      <small>Boulder, CO 80302</small>
+                      <strong id="profAddress"></strong>
                     </div>
                   </div>
 
-                  <div class="contact-row">
+                  <div class="contact-row" id="profPhoneRow">
                     <span>♧</span>
                     <div>
-                      <strong>(303) 555-0184</strong>
+                      <strong id="profPhone"></strong>
                       <small>Call or text</small>
                     </div>
                   </div>
@@ -768,12 +696,12 @@
                   <div class="contact-row">
                     <span>◷</span>
                     <div>
-                      <strong>Open today</strong>
-                      <small>8:00 AM – 6:00 PM</small>
+                      <strong id="profOpenNow"></strong>
+                      <small id="profHours"></small>
                     </div>
                   </div>
 
-                  <a href="#" class="website-link">evergreenhome.co ↗</a>
+                  <a href="#" class="website-link" id="profWebsite" target="_blank" rel="noopener noreferrer">Visit website ↗</a>
                 </div>
               </aside>
             </div>

@@ -72,38 +72,12 @@ let appliances = [];
 let appliancesLoading = true;
 
 // Sample professional listings used by the Professionals page.
-const professionals = [
-  {
-    name: "Evergreen Home Services",
-    logo: "E",
-    rating: "4.9",
-    reviews: "128 reviews",
-    distance: "1.8 mi",
-    availability: "Today at 4:30 PM",
-    description: "Friendly appliance repair from a trusted local team.",
-    category: "Appliance specialist"
-  },
-  {
-    name: "FixRight Appliance Co.",
-    logo: "F",
-    rating: "4.8",
-    reviews: "96 reviews",
-    distance: "3.2 mi",
-    availability: "Tomorrow at 9:00 AM",
-    description: "Fast, honest repairs for all major appliance brands.",
-    category: "Appliance repair"
-  },
-  {
-    name: "Boulder Handy Home",
-    logo: "B",
-    rating: "4.7",
-    reviews: "74 reviews",
-    distance: "4.5 mi",
-    availability: "Fri, Oct 3",
-    description: "Home maintenance and preventative care made easy.",
-    category: "General home repair"
-  }
-];
+// Professionals come from the find-pros Edge Function (Google Places).
+let proResults = [];       // places from the latest search
+let proSearchLabel = "";   // e.g. "Professionals near 84604"
+let proSearching = false;
+let currentPlace = null;   // the profile being viewed
+let selectedStars = 0;
 
 /* =========================================================
    Shared helpers
@@ -256,8 +230,17 @@ function maintenanceEventStatus(event) {
    Page navigation
    ========================================================= */
 
+
+
+
 // Switch the visible page and keep the URL hash in sync.
+
 function navigate(page, updateHistory = true) {
+  // A profile can't be shown after a refresh, because it needs a selected business.
+  if (page === "professional-profile" && !currentPlace) {
+    page = "professionals";
+  }
+
   if (!pages.includes(page)) {
     page = "home";
   }
@@ -1216,64 +1199,292 @@ async function getMaintenanceRecommendation(forceRefresh = false) {
    Professionals
    ========================================================= */
 
-// Draw the professional cards and attach profile and booking actions.
+// Only allow normal web links from outside data.
+function safeWebUrl(value) {
+  return /^https?:\/\//i.test(value || "") ? value : "";
+}
+
+// Draw the latest search results (or the loading / empty states).
 function renderProfessionals() {
-  $("#professionalList").innerHTML = professionals
-    .map((professional, index) => {
-      const selectedClass = index === 0 ? " selected" : "";
+  const list = $("#professionalList");
+
+  if (proSearching) {
+    $("#resultsCount").textContent = "";
+    list.innerHTML =
+      '<p class="maintenance-empty" role="status">Searching…</p>';
+    return;
+  }
+
+  $("#resultsTitle").textContent =
+    proSearchLabel || "Search for professionals";
+
+  if (!proSearchLabel) {
+    $("#resultsCount").textContent = "";
+    list.innerHTML =
+      '<p class="maintenance-empty">' +
+      "Use the search above to find professionals near you." +
+      "</p>";
+    return;
+  }
+
+  $("#resultsCount").textContent =
+    proResults.length + " result" + (proResults.length === 1 ? "" : "s");
+
+  if (proResults.length === 0) {
+    list.innerHTML =
+      '<p class="maintenance-empty">' +
+      "No professionals found. Try a different search or location." +
+      "</p>";
+    return;
+  }
+
+  list.innerHTML = proResults
+    .map(place => {
+      const name = place.displayName?.text || "Unnamed business";
+      const openNow = place.regularOpeningHours?.openNow;
+      const phone = (place.nationalPhoneNumber || "").replace(/[^\d+]/g, "");
 
       return (
-        '<article class="pro-card' + selectedClass + '">' +
+        '<article class="pro-card">' +
           '<div class="pro-top">' +
-            '<div class="pro-logo">' + professional.logo + "</div>" +
+            '<div class="pro-logo">' +
+              escapeHTML(name.charAt(0).toUpperCase()) +
+            "</div>" +
             "<div>" +
-              "<h3>" + professional.name + "</h3>" +
-              '<div class="pro-rating">★ ' +
-                professional.rating +
-                "<span>" + professional.reviews + "</span>" +
+              "<h3>" + escapeHTML(name) + "</h3>" +
+              '<div class="pro-rating">' +
+                (place.rating
+                  ? "★ " + escapeHTML(place.rating) +
+                    "<span>" + escapeHTML(place.userRatingCount ?? 0) +
+                    " Google reviews</span>"
+                  : "No ratings yet") +
               "</div>" +
             "</div>" +
           "</div>" +
           '<p class="pro-description">' +
-            professional.description +
+            escapeHTML(place.formattedAddress || "") +
           "</p>" +
           '<div class="pro-meta">' +
-            "<span>" + professional.category + "</span>" +
-            "<span>" + professional.distance + "</span>" +
-            "<span>" + professional.availability + "</span>" +
+            (place.primaryTypeDisplayName?.text
+              ? "<span>" + escapeHTML(place.primaryTypeDisplayName.text) + "</span>"
+              : "") +
+            (openNow === true ? "<span>Open now</span>" : "") +
+            (openNow === false ? "<span>Closed now</span>" : "") +
           "</div>" +
           '<div class="pro-actions">' +
-            '<button class="outline-button" data-profile="' +
-              professional.name +
-            '">View profile</button>' +
-            '<button class="soft-button" data-book="' +
-              professional.name +
-            '">Select time</button>' +
+            '<button type="button" class="outline-button" data-view-pro="' +
+              escapeHTML(place.id) + '">View profile</button>' +
+            (phone
+              ? '<a class="soft-button" href="tel:' + escapeHTML(phone) + '"' +
+                ' style="display:grid;place-items:center;text-decoration:none">' +
+                "Call</a>"
+              : "") +
           "</div>" +
         "</article>"
       );
     })
     .join("");
+}
 
-  $$("[data-profile]").forEach(button => {
-    button.addEventListener("click", () => {
-      navigate("professional-profile");
-    });
-  });
+// Ask the find-pros Edge Function for real businesses.
+async function findProfessionals() {
+  if (proSearching) return;
 
-  $$("[data-book]").forEach(button => {
-    button.addEventListener("click", () => {
-      navigate("professional-profile");
+  const need = $("#serviceNeed").value.trim();
+  const location = $("#serviceLocation").value.trim();
 
-      setTimeout(() => {
-        showToast(
-          "Professional selected",
-          "Choose an available appointment time."
-        );
-      }, 250);
-    });
+  if (!need || !location) {
+    showToast("Missing info", "Enter what you need and where.");
+    return;
+  }
+
+  proSearching = true;
+  $("#findProfessionals").disabled = true;
+  renderProfessionals();
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke(
+      "find-pros",
+      { body: { need, location } }
+    );
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
+    proResults = data?.places || [];
+    proSearchLabel = "Professionals near " + location;
+  } catch (error) {
+    console.error("Professional search error:", error);
+    proResults = [];
+    proSearchLabel = "";
+    showToast("Search failed", "We couldn't load professionals. Please try again.");
+  } finally {
+    proSearching = false;
+    $("#findProfessionals").disabled = false;
+    renderProfessionals();
+  }
+}
+
+// Fill the profile page from one search result and show it.
+function openProfile(placeId) {
+  const place = proResults.find(item => item.id === placeId);
+  if (!place) return;
+
+  currentPlace = place;
+  selectedStars = 0;
+  updateStars();
+  $("#reviewService").value = "";
+  $("#reviewComment").value = "";
+
+  const name = place.displayName?.text || "Unnamed business";
+  $("#profLogo").textContent = name.charAt(0).toUpperCase();
+  $("#profName").textContent = name;
+  $("#profType").textContent =
+    (place.primaryTypeDisplayName?.text || "Local professional").toUpperCase();
+  $("#profGoogleRating").textContent = place.rating
+    ? "★ " + place.rating + " · " + (place.userRatingCount ?? 0) + " Google reviews"
+    : "No Google ratings";
+  $("#profAddress").textContent = place.formattedAddress || "";
+
+  $("#profPhoneRow").hidden = !place.nationalPhoneNumber;
+  $("#profPhone").textContent = place.nationalPhoneNumber || "";
+
+  const hours = place.regularOpeningHours;
+  $("#profOpenNow").textContent =
+    hours?.openNow === true ? "Open now" :
+    hours?.openNow === false ? "Closed now" : "Hours";
+  $("#profHours").textContent =
+    (hours?.weekdayDescriptions || []).join(" · ") || "Hours not listed";
+
+  const website = $("#profWebsite");
+  const url = safeWebUrl(place.websiteUri);
+  website.hidden = !url;
+  if (url) website.href = url;
+
+  navigate("professional-profile");
+  loadHavenlyReviews(place.id);
+}
+
+// Show reviews that Havenly users left for this business.
+async function loadHavenlyReviews(placeId) {
+  const box = $("#profHavenlyReviews");
+  const summary = $("#profHavenlyRating");
+
+  summary.textContent = "";
+  box.innerHTML = '<p class="maintenance-empty">Loading reviews…</p>';
+
+  const { data, error } = await supabaseClient
+    .from("reviews")
+    .select("reviewer_name, rating, service, comment, created_at")
+    .eq("place_id", placeId)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  // Ignore a late response if the user opened a different business.
+  if (!currentPlace || currentPlace.id !== placeId) return;
+
+  if (error) {
+    console.error("Review loading error:", error);
+    box.innerHTML = '<p class="maintenance-empty">Could not load reviews.</p>';
+    return;
+  }
+
+  if (data.length === 0) {
+    summary.textContent = "No Havenly reviews yet";
+    box.innerHTML =
+      '<p class="maintenance-empty">Be the first to review this professional.</p>';
+    return;
+  }
+
+  const average =
+    data.reduce((total, review) => total + review.rating, 0) / data.length;
+  summary.textContent =
+    "★ " + average.toFixed(1) + " · " + data.length +
+    " Havenly review" + (data.length === 1 ? "" : "s");
+
+  box.innerHTML = data
+    .map(review => {
+      const reviewer = review.reviewer_name || "Havenly user";
+
+      return (
+        '<div class="review">' +
+          '<div class="review-top">' +
+            '<span class="avatar">' +
+              escapeHTML(reviewer.charAt(0).toUpperCase()) + "</span>" +
+            "<div>" +
+              "<strong>" + escapeHTML(reviewer) + "</strong>" +
+              "<span>" + escapeHTML(review.service || "Service") + " · " +
+                escapeHTML(new Date(review.created_at).toLocaleDateString("en-US", {
+                  month: "short", day: "numeric", year: "numeric"
+                })) + "</span>" +
+            "</div>" +
+            "<b>" + "★".repeat(review.rating) + "</b>" +
+          "</div>" +
+          (review.comment
+            ? "<p>" + escapeHTML(review.comment) + "</p>"
+            : "") +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
+function updateStars() {
+  $$("#starInput button").forEach((star, index) => {
+    star.classList.toggle("selected", index < selectedStars);
   });
 }
+
+// Save (or update) the signed-in user's review for this business.
+async function submitReview() {
+  if (!currentPlace) return;
+
+  if (!selectedStars) {
+    showToast("Pick a rating", "Choose 1 to 5 stars first.");
+    return;
+  }
+
+  const button = $("#submitReview");
+  button.disabled = true;
+
+  try {
+    const { data: userData, error: userError } =
+      await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+      throw userError || new Error("Please sign in.");
+    }
+
+    const { error } = await supabaseClient.from("reviews").upsert(
+      {
+        place_id: currentPlace.id,
+        user_id: userData.user.id,
+        reviewer_name:
+          userData.user.user_metadata?.first_name || "Havenly user",
+        rating: selectedStars,
+        service: $("#reviewService").value.trim(),
+        satisfaction: $("#reviewSatisfaction").value,
+        comment: $("#reviewComment").value.trim()
+      },
+      { onConflict: "place_id,user_id" }
+    );
+
+    if (error) throw error;
+
+    showToast("Review saved", "Thanks for sharing your experience.");
+    $("#reviewService").value = "";
+    $("#reviewComment").value = "";
+    selectedStars = 0;
+    updateStars();
+    loadHavenlyReviews(currentPlace.id);
+  } catch (error) {
+    console.error("Review save error:", error);
+    showToast("Error", error.message || "Unable to save your review.");
+  } finally {
+    button.disabled = false;
+  }
+}
+
 
 /* =========================================================
    Maintenance Max chat
@@ -2559,34 +2770,34 @@ $("#chatForm").addEventListener("submit", event => {
   }
 });
 
-// Select a professional category.
-$$(".category-chip").forEach(button => {
-  button.addEventListener("click", () => {
-    $$(".category-chip").forEach(chip => {
-      chip.classList.remove("active");
-    });
+// Search button and Enter key.
+$("#findProfessionals").addEventListener("click", findProfessionals);
 
-    button.classList.add("active");
+["#serviceNeed", "#serviceLocation"].forEach(selector => {
+  $(selector).addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      findProfessionals();
+    }
   });
 });
 
-$("#findProfessionals").addEventListener("click", () => {
-  renderProfessionals();
-  showToast("Search updated", "Showing trusted professionals near you.");
+// "View profile" buttons are created dynamically, so listen on the list.
+$("#professionalList").addEventListener("click", event => {
+  const button = event.target.closest("[data-view-pro]");
+  if (button) openProfile(button.dataset.viewPro);
 });
 
-// Update the selected star rating.
-$$("#starInput button").forEach((button, selectedIndex) => {
+// Star rating and review submission.
+$$("#starInput button").forEach((button, index) => {
+  button.type = "button";
   button.addEventListener("click", () => {
-    $$("#starInput button").forEach((star, starIndex) => {
-      star.classList.toggle("selected", starIndex <= selectedIndex);
-    });
+    selectedStars = index + 1;
+    updateStars();
   });
 });
 
-$("#submitReview").addEventListener("click", () => {
-  showToast("Review submitted", "Thanks for sharing your experience.");
-});
+$("#submitReview").addEventListener("click", submitReview);
 
 /* =========================================================
    Initial page rendering
@@ -2897,6 +3108,12 @@ async function handleSignOut() {
   currentAccountUser = null;
   appliances = [];
   appliancesLoading = true;
+
+
+    proResults = [];
+  proSearchLabel = "";
+  currentPlace = null;
+  $("#serviceLocation").value = "";
 
   events = [];
   maintenanceApplianceFilter = null;
