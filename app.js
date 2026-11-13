@@ -2023,10 +2023,28 @@ async function askMax(text) {
       ".chat-bubble"
     ).textContent = data.reply;
 
-    if (data.proposedEvent) {
+if (data.proposedEvent) {
   showMaxEventProposal(
     pendingMessage,
     data.proposedEvent
+  );
+}
+
+if (data.proposedAppliance) {
+  console.log("Displaying appliance proposal:", data.proposedAppliance);
+
+  showMaxApplianceProposal(
+    pendingMessage,
+    data.proposedAppliance
+  );
+}
+
+if (data.proposedAppliance) {
+  console.log("Displaying appliance proposal:", data.proposedAppliance);
+
+  showMaxApplianceProposal(
+    pendingMessage,
+    data.proposedAppliance
   );
 }
 
