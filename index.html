@@ -835,7 +835,10 @@
     <option value="yearly">Yearly</option>
   </select>
 </label>
-            
+            <label id="eventRepeatUntilField" hidden>
+              Repeat until
+              <input name="repeatUntil" type="date">
+            </label>
 
             <label id="eventCompletionField" hidden>
               Completion
@@ -1226,6 +1229,32 @@
 
       <button type="button" id="closeEventDetailsButton"
               class="event-details-close">Close</button>
+    </div>
+  </div>
+</div>
+<div id="deleteRecurringEventsModal" class="event-details-overlay" hidden>
+  <div class="event-details-modal" role="dialog"
+       aria-modal="true" aria-labelledby="deleteRecurringEventsTitle"
+       aria-describedby="deleteRecurringEventsMessage">
+    <div class="event-details-header">
+      <h3 id="deleteRecurringEventsTitle">Delete repeating event</h3>
+      <button type="button" id="cancelDeleteRecurringEvents"
+              class="event-details-x" aria-label="Close">×</button>
+    </div>
+    <p id="deleteRecurringEventsMessage"></p>
+    <div class="event-details-actions">
+      <button type="button" id="deleteThisRecurringEvent"
+              class="event-details-edit">
+        Delete this event
+      </button>
+      <button type="button" id="deleteAllRecurringEvents"
+              class="event-details-edit">
+        Delete all occurrences
+      </button>
+      <button type="button" id="cancelDeleteRecurringEventsButton"
+              class="event-details-close">
+        Cancel
+      </button>
     </div>
   </div>
 </div>

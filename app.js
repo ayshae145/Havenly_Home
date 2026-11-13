@@ -50,6 +50,7 @@ let selectedAppliance = null;
 let applianceBeingEdited = null;
 let maintenanceEventBeingEdited = null;
 let selectedMaintenanceEvent = null;
+let pendingRecurringDeletion = null;
 let maintenanceApplianceFilter = null;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
@@ -128,15 +129,19 @@ function formatMaintenanceTime(timeValue) {
   });
 }
 
-function getRecurringDates(startDate, repeat) {
+function getRecurringDates(startDate, repeat, endDate = null) {
   if (repeat === "none") {
     return [startDate];
+  }
+
+  if (endDate && endDate < startDate) {
+    return [];
   }
 
   const start = new Date(startDate + "T12:00:00");
   const dates = [];
 
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 0; endDate || i < 12; i += 1) {
     const recurringDate = new Date(start);
 
     if (repeat === "weekly") {
@@ -147,10 +152,86 @@ function getRecurringDates(startDate, repeat) {
       recurringDate.setFullYear(start.getFullYear() + i);
     }
 
-    dates.push(getLocalDateString(recurringDate));
+    const date = getLocalDateString(recurringDate);
+    if (endDate && date > endDate) {
+      break;
+    }
+
+    dates.push(date);
   }
 
   return dates;
+}
+
+function updateEventRepeatUntil() {
+  const form = $("#eventForm");
+  const repeat = form.elements["repeat"].value;
+  const repeatUntilField = $("#eventRepeatUntilField");
+  const repeatUntilInput = form.elements["repeatUntil"];
+  const isRepeating = repeat !== "none";
+
+  repeatUntilField.hidden =
+    !isRepeating || Boolean(maintenanceEventBeingEdited);
+  repeatUntilInput.required =
+    isRepeating && !maintenanceEventBeingEdited;
+  repeatUntilInput.min = form.elements["date"].value;
+
+  if (!isRepeating) {
+    repeatUntilInput.value = "";
+    repeatUntilInput.dataset.custom = "false";
+    return;
+  }
+
+  if (
+    !repeatUntilInput.dataset.custom ||
+    repeatUntilInput.value < form.elements["date"].value
+  ) {
+    const defaultDates = getRecurringDates(
+      form.elements["date"].value,
+      repeat
+    );
+    repeatUntilInput.value = defaultDates[defaultDates.length - 1];
+    repeatUntilInput.dataset.custom = "false";
+  }
+}
+
+function getRecurringSeriesEvents(maintenanceEvent) {
+  const matchingEvents = events.filter(event =>
+    event.name === maintenanceEvent.name &&
+    event.category === maintenanceEvent.category &&
+    event.applianceId === maintenanceEvent.applianceId &&
+    event.timeValue === maintenanceEvent.timeValue &&
+    event.description === maintenanceEvent.description
+  );
+  let recurringSeries = [maintenanceEvent];
+  const latestMatchingDate = matchingEvents.reduce(
+    (latestDate, event) =>
+      event.date > latestDate ? event.date : latestDate,
+    maintenanceEvent.date
+  );
+
+  ["weekly", "monthly", "yearly"].forEach(repeat => {
+    matchingEvents.forEach(startEvent => {
+      const recurringDates = new Set(
+        getRecurringDates(startEvent.date, repeat, latestMatchingDate)
+      );
+      if (!recurringDates.has(maintenanceEvent.date)) {
+        return;
+      }
+
+      const series = matchingEvents.filter(event =>
+        recurringDates.has(event.date)
+      );
+      if (
+        series.some(event => event.id === maintenanceEvent.id) &&
+        series.length > recurringSeries.length
+      ) {
+        recurringSeries = series;
+      }
+    });
+  });
+
+  return recurringSeries;
 }
 
 function escapeHTML(value) {
@@ -1888,50 +1969,53 @@ document.addEventListener("click", async event => {
   }
 
   if (event.target.closest("#deleteEventDetailsButton")) {
-  if (!selectedMaintenanceEvent) return;
+    if (!selectedMaintenanceEvent) return;
 
-  const shouldDelete = confirm(
-    "Are you sure you want to delete this maintenance event?"
-  );
-
-  if (!shouldDelete) return;
-
-  try {
-    const { data: userData, error: userError } =
-      await supabaseClient.auth.getUser();
-
-    if (userError || !userData.user) {
-      throw userError || new Error("Please sign in.");
+    const recurringSeries =
+      getRecurringSeriesEvents(selectedMaintenanceEvent);
+    if (recurringSeries.length > 1) {
+      pendingRecurringDeletion = recurringSeries;
+      $("#deleteRecurringEventsMessage").textContent =
+        `This event is part of a series with ${recurringSeries.length} ` +
+        "occurrences. Which would you like to delete?";
+      $("#deleteRecurringEventsModal").hidden = false;
+      $("#eventDetailsModal").hidden = true;
+      return;
     }
 
-    const { error } = await supabaseClient
-      .from("maintenance_events")
-      .delete()
-      .eq("id", selectedMaintenanceEvent.id)
-      .eq("user_id", userData.user.id);
-
-    if (error) throw error;
-
-    document.getElementById("eventDetailsModal").hidden = true;
-    selectedMaintenanceEvent = null;
-
-    await loadMaintenanceEvents();
-
-    showToast(
-      "Event deleted",
-      "The maintenance event has been deleted."
+    const shouldDelete = confirm(
+      "Are you sure you want to delete this maintenance event?"
     );
-  } catch (error) {
-    console.error("Error deleting maintenance event:", error);
-
-    showToast(
-      "Error",
-      error.message || "Unable to delete the event."
-    );
+    if (shouldDelete) {
+      await deleteMaintenanceEvents([selectedMaintenanceEvent]);
+    }
+    return;
   }
 
-  return;
-}
+  if (
+    event.target.closest("#cancelDeleteRecurringEvents") ||
+    event.target.closest("#cancelDeleteRecurringEventsButton") ||
+    event.target.id === "deleteRecurringEventsModal"
+  ) {
+    $("#deleteRecurringEventsModal").hidden = true;
+    pendingRecurringDeletion = null;
+    if (selectedMaintenanceEvent) {
+      $("#eventDetailsModal").hidden = false;
+    }
+    return;
+  }
+
+  if (event.target.closest("#deleteThisRecurringEvent")) {
+    if (!selectedMaintenanceEvent) return;
+    await deleteMaintenanceEvents([selectedMaintenanceEvent]);
+    return;
+  }
+
+  if (event.target.closest("#deleteAllRecurringEvents")) {
+    if (!pendingRecurringDeletion) return;
+    await deleteMaintenanceEvents(pendingRecurringDeletion, true);
+    return;
+  }
 
   // Close the event details popup.
   if (
@@ -1959,6 +2043,45 @@ document.addEventListener("click", async event => {
     closeModal(event.target.id);
   }
 });
+
+async function deleteMaintenanceEvents(eventsToDelete, deleteAll = false) {
+  try {
+    const { data: userData, error: userError } =
+      await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+      throw userError || new Error("Please sign in.");
+    }
+
+    const eventIds = eventsToDelete.map(event => event.id);
+    const { error } = await supabaseClient
+      .from("maintenance_events")
+      .delete()
+      .in("id", eventIds)
+      .eq("user_id", userData.user.id);
+
+    if (error) throw error;
+
+    $("#eventDetailsModal").hidden = true;
+    $("#deleteRecurringEventsModal").hidden = true;
+    selectedMaintenanceEvent = null;
+    pendingRecurringDeletion = null;
+    await loadMaintenanceEvents();
+
+    showToast(
+      deleteAll ? "Events deleted" : "Event deleted",
+      deleteAll
+        ? "All events in the series have been deleted."
+        : "The maintenance event has been deleted."
+    );
+  } catch (error) {
+    console.error("Error deleting maintenance event:", error);
+    showToast(
+      "Error",
+      error.message || "Unable to delete the event."
+    );
+  }
+}
 
 async function loadSavedMaxConversations() {
   const container = document.getElementById(
@@ -2408,6 +2531,7 @@ function prepareEventForm(maintenanceEvent = null) {
   form.reset();
   populateEventAppliances();
   maintenanceEventBeingEdited = maintenanceEvent?.id || null;
+  form.elements["repeatUntil"].dataset.custom = "false";
   $("#eventCompletionField").hidden = !maintenanceEvent;
   $("#eventRepeatField").hidden = Boolean(maintenanceEvent);
   $("#eventModal").querySelector("h2").textContent =
@@ -2416,6 +2540,7 @@ function prepareEventForm(maintenanceEvent = null) {
 
   if (!maintenanceEvent) {
     form.elements["date"].value = getLocalDateString();
+    updateEventRepeatUntil();
     return;
   }
 
@@ -2426,7 +2551,23 @@ function prepareEventForm(maintenanceEvent = null) {
   form.elements["status"].value =
     maintenanceEvent.status === "Completed" ? "Completed" : "Upcoming";
   form.elements["description"].value = maintenanceEvent.description;
+  updateEventRepeatUntil();
 }
+
+$("#eventForm").elements["repeat"].addEventListener(
+  "change",
+  updateEventRepeatUntil
+);
+$("#eventForm").elements["date"].addEventListener(
+  "change",
+  updateEventRepeatUntil
+);
+$("#eventForm").elements["repeatUntil"].addEventListener(
+  "input",
+  event => {
+    event.target.dataset.custom = "true";
+  }
+);
 
 $$("[data-month-offset]").forEach(button => {
   button.addEventListener("click", () => {
@@ -2524,6 +2665,7 @@ $("#eventForm").addEventListener("submit", async event => {
   const saveButton = form.querySelector('[type="submit"]');
   const formData = new FormData(form);
   const repeat = formData.get("repeat") || "none";
+  const repeatUntil = formData.get("repeatUntil");
 
   saveButton.disabled = true;
   saveButton.textContent = "Saving...";
@@ -2560,6 +2702,13 @@ $("#eventForm").addEventListener("submit", async event => {
       status: formData.get("status") || "Upcoming"
     };
 
+    if (
+      repeat !== "none" &&
+      (!repeatUntil || repeatUntil < eventChanges.event_date)
+    ) {
+      throw new Error("Choose a repeat end date on or after the event date.");
+    }
+
     let saveQuery = supabaseClient.from("maintenance_events");
     if (maintenanceEventBeingEdited) {
       saveQuery = saveQuery
@@ -2569,7 +2718,8 @@ $("#eventForm").addEventListener("submit", async event => {
     } else {
   const recurringDates = getRecurringDates(
     eventChanges.event_date,
-    repeat
+    repeat,
+    repeat === "none" ? null : repeatUntil
   );
 
   const eventsToInsert = recurringDates.map(date => ({
