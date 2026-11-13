@@ -49,6 +49,7 @@ let currentPage = "home";
 let selectedAppliance = null;
 let applianceBeingEdited = null;
 let maintenanceEventBeingEdited = null;
+let maintenanceEventSeriesBeingEdited = null;
 let selectedMaintenanceEvent = null;
 let pendingRecurringDeletion = null;
 let maintenanceApplianceFilter = null;
@@ -169,12 +170,16 @@ function updateEventRepeatUntil() {
   const repeatUntilField = $("#eventRepeatUntilField");
   const repeatUntilInput = form.elements["repeatUntil"];
   const isRepeating = repeat !== "none";
+  const isEditingRecurringSeries =
+    Boolean(maintenanceEventSeriesBeingEdited);
 
-  repeatUntilField.hidden =
-    !isRepeating || Boolean(maintenanceEventBeingEdited);
-  repeatUntilInput.required =
-    isRepeating && !maintenanceEventBeingEdited;
+  repeatUntilField.hidden = !isRepeating || isEditingRecurringSeries;
+  repeatUntilInput.required = isRepeating && !isEditingRecurringSeries;
   repeatUntilInput.min = form.elements["date"].value;
+
+  if (isEditingRecurringSeries) {
+    return;
+  }
 
   if (!isRepeating) {
     repeatUntilInput.value = "";
@@ -232,6 +237,37 @@ function getRecurringSeriesEvents(maintenanceEvent) {
   });
 
   return recurringSeries;
+}
+
+function getRecurringSeriesFrequency(series) {
+  const orderedSeries = [...series].sort((first, second) =>
+    first.date.localeCompare(second.date)
+  );
+  if (orderedSeries.length < 2) {
+    return null;
+  }
+
+  const firstDate = orderedSeries[0].date;
+  const lastDate = orderedSeries[orderedSeries.length - 1].date;
+
+  for (const repeat of ["weekly", "monthly", "yearly"]) {
+    const dates = getRecurringDates(firstDate, repeat, lastDate);
+    if (
+      dates.length === orderedSeries.length &&
+      dates.every((date, index) => date === orderedSeries[index].date)
+    ) {
+      return repeat;
+    }
+  }
+
+  for (const repeat of ["yearly", "monthly", "weekly"]) {
+    const dates = new Set(getRecurringDates(firstDate, repeat, lastDate));
+    if (orderedSeries.every(event => dates.has(event.date))) {
+      return repeat;
+    }
+  }
+
+  return null;
 }
 
 function escapeHTML(value) {
@@ -2531,9 +2567,13 @@ function prepareEventForm(maintenanceEvent = null) {
   form.reset();
   populateEventAppliances();
   maintenanceEventBeingEdited = maintenanceEvent?.id || null;
+  maintenanceEventSeriesBeingEdited = null;
+  const repeatSelect = form.elements["repeat"];
+  const noRepeatOption = repeatSelect.querySelector('option[value="none"]');
+  noRepeatOption.disabled = false;
   form.elements["repeatUntil"].dataset.custom = "false";
   $("#eventCompletionField").hidden = !maintenanceEvent;
-  $("#eventRepeatField").hidden = Boolean(maintenanceEvent);
+  $("#eventRepeatField").hidden = false;
   $("#eventModal").querySelector("h2").textContent =
     maintenanceEvent ? "Edit maintenance event" : "Add maintenance event";
   submitButton.textContent = maintenanceEvent ? "Save changes" : "Save event";
@@ -2551,6 +2591,20 @@ function prepareEventForm(maintenanceEvent = null) {
   form.elements["status"].value =
     maintenanceEvent.status === "Completed" ? "Completed" : "Upcoming";
   form.elements["description"].value = maintenanceEvent.description;
+
+  const recurringSeries = getRecurringSeriesEvents(maintenanceEvent);
+  const repeatFrequency = getRecurringSeriesFrequency(recurringSeries);
+  if (repeatFrequency) {
+    maintenanceEventSeriesBeingEdited = recurringSeries.sort(
+      (first, second) => first.date.localeCompare(second.date)
+    );
+    repeatSelect.value = repeatFrequency;
+    form.elements["repeatUntil"].value =
+      maintenanceEventSeriesBeingEdited[
+        maintenanceEventSeriesBeingEdited.length - 1
+      ].date;
+  }
+
   updateEventRepeatUntil();
 }
 
@@ -2704,36 +2758,144 @@ $("#eventForm").addEventListener("submit", async event => {
 
     if (
       repeat !== "none" &&
+      !maintenanceEventSeriesBeingEdited &&
       (!repeatUntil || repeatUntil < eventChanges.event_date)
     ) {
       throw new Error("Choose a repeat end date on or after the event date.");
     }
 
-    let saveQuery = supabaseClient.from("maintenance_events");
-    if (maintenanceEventBeingEdited) {
-      saveQuery = saveQuery
-        .update(eventChanges)
-        .eq("id", maintenanceEventBeingEdited)
-        .eq("user_id", userData.user.id);
+    if (maintenanceEventBeingEdited && maintenanceEventSeriesBeingEdited) {
+      const selectedEvent = maintenanceEventSeriesBeingEdited.find(
+        item => String(item.id) === String(maintenanceEventBeingEdited)
+      );
+      if (!selectedEvent) {
+        throw new Error("Unable to find the repeating event series.");
+      }
+
+      const seriesEndDate =
+        maintenanceEventSeriesBeingEdited[
+          maintenanceEventSeriesBeingEdited.length - 1
+        ].date;
+      const eventsToReschedule = maintenanceEventSeriesBeingEdited
+        .filter(item => item.date >= selectedEvent.date)
+        .sort((first, second) => first.date.localeCompare(second.date));
+      const repeatEndDate =
+        seriesEndDate < eventChanges.event_date
+          ? eventChanges.event_date
+          : seriesEndDate;
+      let recurringDates = getRecurringDates(
+        eventChanges.event_date,
+        repeat,
+        repeatEndDate
+      );
+      if (repeat !== "none" && recurringDates.length < 2) {
+        recurringDates = getRecurringDates(
+          eventChanges.event_date,
+          repeat
+        ).slice(0, 2);
+      }
+      const eventsToUpdate = eventsToReschedule.slice(
+        0,
+        recurringDates.length
+      );
+
+      for (let index = 0; index < eventsToUpdate.length; index += 1) {
+        const existingEvent = eventsToUpdate[index];
+        const changes = {
+          ...eventChanges,
+          event_date: recurringDates[index],
+          status: String(existingEvent.id) ===
+            String(maintenanceEventBeingEdited)
+            ? eventChanges.status
+            : existingEvent.status
+        };
+        const { error } = await supabaseClient
+          .from("maintenance_events")
+          .update(changes)
+          .eq("id", existingEvent.id)
+          .eq("user_id", userData.user.id);
+
+        if (error) throw error;
+      }
+
+      const recurringEvents = recurringDates
+        .slice(eventsToUpdate.length)
+        .map(date => ({
+          ...eventChanges,
+          event_date: date,
+          status: "Upcoming",
+          user_id: userData.user.id
+        }));
+
+      if (recurringEvents.length > 0) {
+        const { error } = await supabaseClient
+          .from("maintenance_events")
+          .insert(recurringEvents);
+
+        if (error) throw error;
+      }
+
+      const eventIdsToDelete = eventsToReschedule
+        .slice(recurringDates.length)
+        .map(item => item.id);
+      if (eventIdsToDelete.length > 0) {
+        const { error } = await supabaseClient
+          .from("maintenance_events")
+          .delete()
+          .in("id", eventIdsToDelete)
+          .eq("user_id", userData.user.id);
+
+        if (error) throw error;
+      }
     } else {
-  const recurringDates = getRecurringDates(
-    eventChanges.event_date,
-    repeat,
-    repeat === "none" ? null : repeatUntil
-  );
+      let saveQuery = supabaseClient.from("maintenance_events");
+      if (maintenanceEventBeingEdited) {
+        saveQuery = saveQuery
+          .update(eventChanges)
+          .eq("id", maintenanceEventBeingEdited)
+          .eq("user_id", userData.user.id);
+      } else {
+        const recurringDates = getRecurringDates(
+          eventChanges.event_date,
+          repeat,
+          repeat === "none" ? null : repeatUntil
+        );
 
-  const eventsToInsert = recurringDates.map(date => ({
-    ...eventChanges,
-    event_date: date,
-    user_id: userData.user.id
-  }));
+        const eventsToInsert = recurringDates.map(date => ({
+          ...eventChanges,
+          event_date: date,
+          user_id: userData.user.id
+        }));
 
-  saveQuery = saveQuery.insert(eventsToInsert);
-}
+        saveQuery = saveQuery.insert(eventsToInsert);
+      }
 
-    const { error } = await saveQuery;
+      const { error } = await saveQuery;
 
-    if (error) throw error;
+      if (error) throw error;
+
+      if (maintenanceEventBeingEdited && repeat !== "none") {
+        const recurringDates = getRecurringDates(
+          eventChanges.event_date,
+          repeat,
+          repeatUntil
+        );
+        const recurringEvents = recurringDates.slice(1).map(date => ({
+          ...eventChanges,
+          event_date: date,
+          status: "Upcoming",
+          user_id: userData.user.id
+        }));
+
+        if (recurringEvents.length > 0) {
+          const { error: recurringError } = await supabaseClient
+            .from("maintenance_events")
+            .insert(recurringEvents);
+
+          if (recurringError) throw recurringError;
+        }
+      }
+    }
 
     const [year, month] = String(eventChanges.event_date)
     .split("-")
@@ -2746,6 +2908,7 @@ $("#eventForm").addEventListener("submit", async event => {
 
     const wasEditing = Boolean(maintenanceEventBeingEdited);
     maintenanceEventBeingEdited = null;
+    maintenanceEventSeriesBeingEdited = null;
     selectedMaintenanceEvent = null;
     await loadMaintenanceEvents();
 
