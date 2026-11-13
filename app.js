@@ -1835,6 +1835,141 @@ function showMaxEventProposal(messageRow, proposal) {
   $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
 }
 
+
+function showMaxApplianceProposal(messageRow, proposal) {
+  const bubble = messageRow.querySelector(".chat-bubble");
+
+  const card = document.createElement("div");
+  card.className = "max-event-proposal";
+
+  const title = document.createElement("strong");
+  title.textContent = "Proposed appliance";
+
+  const details = document.createElement("p");
+  details.textContent = [
+    "Name: " + proposal.name,
+    "Type: " + proposal.type,
+    "Brand: " + (proposal.brand || "Not provided"),
+    "Model: " + (proposal.model || "Not provided"),
+    "Category: " + proposal.category,
+    "Purchase date: " + (proposal.purchase_date || "Not provided"),
+    "Last maintenance: " +
+      (proposal.last_maintenance_date || "Not provided")
+  ].join("\n");
+
+  const actions = document.createElement("div");
+  actions.className = "max-proposal-actions";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.textContent = "Cancel";
+  cancelButton.className = "button button-ghost";
+
+  const confirmButton = document.createElement("button");
+  confirmButton.textContent = "Confirm appliance";
+  confirmButton.className = "button button-primary";
+
+  cancelButton.addEventListener("click", () => {
+    card.remove();
+    addChatMessage("Appliance canceled. Nothing was saved.", "max");
+  });
+
+  confirmButton.addEventListener("click", async () => {
+    confirmButton.disabled = true;
+    cancelButton.disabled = true;
+    confirmButton.textContent = "Saving...";
+
+    try {
+      const { data: userData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+      if (authError || !userData.user) {
+        throw authError || new Error("Please sign in.");
+      }
+
+      const validCategories = [
+        "Kitchen", "Laundry", "HVAC", "Plumbing", "General"
+      ];
+
+      const validDate = value => {
+        if (value == null) return true;
+        if (
+          typeof value !== "string" ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(value)
+        ) return false;
+
+        const date = new Date(value + "T12:00:00Z");
+        return !Number.isNaN(date.getTime()) &&
+          date.toISOString().slice(0, 10) === value;
+      };
+
+      const validOptionalText = (value, maxLength) =>
+        value == null ||
+        (typeof value === "string" && value.length <= maxLength);
+
+      if (
+        typeof proposal.name !== "string" ||
+        !proposal.name.trim() ||
+        proposal.name.length > 150 ||
+        typeof proposal.type !== "string" ||
+        !proposal.type.trim() ||
+        proposal.type.length > 100 ||
+        !validCategories.includes(proposal.category) ||
+        !validOptionalText(proposal.brand, 150) ||
+        !validOptionalText(proposal.model, 150) ||
+        !validDate(proposal.purchase_date) ||
+        !validDate(proposal.last_maintenance_date)
+      ) {
+        throw new Error("The proposed appliance contains invalid details.");
+      }
+
+      const { error } = await supabaseClient
+        .from("appliances")
+        .insert({
+          user_id: userData.user.id,
+          name: proposal.name.trim(),
+          type: proposal.type.trim(),
+          brand: proposal.brand?.trim() || null,
+          model: proposal.model?.trim() || null,
+          category: proposal.category,
+          purchase_date: proposal.purchase_date,
+          last_maintenance_date: proposal.last_maintenance_date
+        });
+
+      if (error) throw error;
+
+      card.remove();
+      await loadAppliances();
+      populateEventAppliances();
+
+      addChatMessage(
+        "Appliance saved! You can now find it in My Appliances.",
+        "max"
+      );
+
+      showToast("Appliance added", "Max's proposed appliance was saved.");
+
+    } catch (error) {
+      console.error("Max appliance creation error:", error);
+
+      showToast(
+        "Error",
+        error.message || "Unable to save the appliance."
+      );
+
+      confirmButton.disabled = false;
+      cancelButton.disabled = false;
+      confirmButton.textContent = "Confirm appliance";
+    }
+  });
+
+  actions.append(cancelButton, confirmButton);
+  card.append(title, details, actions);
+  bubble.appendChild(card);
+
+  $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
+}
+
+
 // Prevent overlapping AI requests.
 let maxIsResponding = false;
 
@@ -1892,6 +2027,13 @@ async function askMax(text) {
   showMaxEventProposal(
     pendingMessage,
     data.proposedEvent
+  );
+}
+
+if (data.proposedAppliance) {
+  showMaxApplianceProposal(
+    pendingMessage,
+    data.proposedAppliance
   );
 }
 
