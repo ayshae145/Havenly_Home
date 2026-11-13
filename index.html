@@ -302,6 +302,14 @@
 
           <!-- MAINTENANCE PAGE -->
           <section class="page" id="page-maintenance">
+            <button
+              class="back-link hidden"
+              id="backToApplianceHistoryButton"
+              type="button"
+            >
+              ← Back to appliance
+            </button>
+
             <div class="page-heading">
               <div>
                 <span class="eyebrow">STAY AHEAD OF THE TO-DO LIST</span>
@@ -492,20 +500,11 @@
               <div class="panel">
                 <div class="panel-heading">
                   <div>
-                    <span class="eyebrow">COMING UP</span>
+                    <span class="eyebrow">SUGGESTED CARE</span>
                     <h3>Recommended care</h3>
                   </div>
                 </div>
                 <div id="detailRecommendations">
-                  <button
-                    class="button button-primary"
-                    id="getMaintenanceRecommendationButton"
-                    type="button"
-                    disabled
-                  >
-                    Refresh suggestion
-                  </button>
-
                   <p
                     id="maintenanceRecommendationMessage"
                     class="maintenance-empty"
@@ -538,6 +537,15 @@
                     This suggestion was generated with AI. Check your appliance’s manual
                     before performing maintenance.
                   </p>
+
+                  <button
+                    class="button button-primary"
+                    id="getMaintenanceRecommendationButton"
+                    type="button"
+                    disabled
+                  >
+                    Refresh suggestion
+                  </button>
                 </div>
               </div>
             </div>
@@ -1237,17 +1245,17 @@
        aria-modal="true" aria-labelledby="deleteRecurringEventsTitle"
        aria-describedby="deleteRecurringEventsMessage">
     <div class="event-details-header">
-      <h3 id="deleteRecurringEventsTitle">Delete repeating event</h3>
+      <h3 id="deleteRecurringEventsTitle">Delete event?</h3>
       <button type="button" id="cancelDeleteRecurringEvents"
               class="event-details-x" aria-label="Close">×</button>
     </div>
     <p id="deleteRecurringEventsMessage"></p>
     <div class="event-details-actions">
-      <button type="button" id="deleteThisRecurringEvent"
+      <button type="button" id="confirmDeleteThisEvent"
               class="event-details-edit">
-        Delete this event
+        Delete event
       </button>
-      <button type="button" id="deleteAllRecurringEvents"
+      <button type="button" id="confirmDeleteAllRecurringEvents"
               class="event-details-edit">
         Delete all occurrences
       </button>

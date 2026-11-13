@@ -53,6 +53,7 @@ let maintenanceEventSeriesBeingEdited = null;
 let selectedMaintenanceEvent = null;
 let pendingRecurringDeletion = null;
 let maintenanceApplianceFilter = null;
+let maintenanceHistoryFromAppliance = false;
 // Stores the appliance while its deletion is awaiting confirmation.
 let appliancePendingDelete = null;
 
@@ -358,9 +359,18 @@ function navigate(page, updateHistory = true) {
     page = "professionals";
   }
 
+  if (page !== "maintenance") {
+    maintenanceHistoryFromAppliance = false;
+  }
+
   if (!pages.includes(page)) {
     page = "home";
   }
+
+  $("#backToApplianceHistoryButton").classList.toggle(
+    "hidden",
+    page !== "maintenance" || !maintenanceHistoryFromAppliance
+  );
 
   if (updateHistory && location.hash !== "#" + page) {
     history.pushState(null, "", "#" + page);
@@ -543,16 +553,36 @@ function populateEventAppliances() {
 }
 
 function renderApplianceHistory(appliance) {
-  const applianceEvents = events
+  const historyEntries = events
     .filter(event => String(event.applianceId) === String(appliance.id))
-    .sort((first, second) => second.date.localeCompare(first.date));
+    .map(event => ({
+      date: event.date,
+      title: event.name,
+      status: maintenanceEventStatus(event)
+    }));
 
-  $("#detailHistory").innerHTML = applianceEvents
-    .map(event =>
+  if (appliance.purchaseDate) {
+    historyEntries.push({
+      date: appliance.purchaseDate,
+      title: "Purchase date"
+    });
+  }
+
+  if (appliance.lastMaintenanceDate) {
+    historyEntries.push({
+      date: appliance.lastMaintenanceDate,
+      title: "Last maintenance"
+    });
+  }
+
+  historyEntries.sort((first, second) => first.date.localeCompare(second.date));
+
+  $("#detailHistory").innerHTML = historyEntries
+    .map(entry =>
       '<article class="appliance-history-item">' +
-        "<strong>" + escapeHTML(event.name) + "</strong>" +
-        "<span>" + escapeHTML(formatDate(event.date).full) + " · " +
-          escapeHTML(maintenanceEventStatus(event)) + "</span>" +
+        "<strong>" + escapeHTML(entry.title) + "</strong>" +
+        "<span>" + escapeHTML(formatDate(entry.date).full) +
+          (entry.status ? " · " + escapeHTML(entry.status) : "") + "</span>" +
       "</article>"
     )
     .join("") ||
@@ -1940,11 +1970,29 @@ document.addEventListener("click", async event => {
     if (!maintenanceEvent) return;
 
     homeCompletionButton.disabled = true;
+    const homeEventCard = homeCompletionButton.closest(".mini-event");
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    const completionAnimation = homeEventCard.animate(
+      [
+        { opacity: 1, transform: "translateX(0)" },
+        { opacity: 0, transform: "translateX(-24px)" }
+      ],
+      {
+        duration: reduceMotion ? 1 : 350,
+        easing: "ease-in",
+        fill: "forwards"
+      }
+    );
+
     try {
+      await completionAnimation.finished;
       await toggleMaintenanceCompletion(maintenanceEvent);
       showToast("Task updated", "Maintenance status updated.");
     } catch (error) {
       console.error("Error completing event from home:", error);
+      completionAnimation.cancel();
       homeCompletionButton.disabled = false;
       showToast("Error", error.message || "Unable to update event.");
     }
@@ -2011,20 +2059,26 @@ document.addEventListener("click", async event => {
       getRecurringSeriesEvents(selectedMaintenanceEvent);
     if (recurringSeries.length > 1) {
       pendingRecurringDeletion = recurringSeries;
+      $("#deleteRecurringEventsTitle").textContent =
+        "Delete repeating event";
       $("#deleteRecurringEventsMessage").textContent =
         `This event is part of a series with ${recurringSeries.length} ` +
         "occurrences. Which would you like to delete?";
+      $("#confirmDeleteThisEvent").textContent = "Delete this event";
+      $("#confirmDeleteAllRecurringEvents").hidden = false;
       $("#deleteRecurringEventsModal").hidden = false;
       $("#eventDetailsModal").hidden = true;
       return;
     }
 
-    const shouldDelete = confirm(
-      "Are you sure you want to delete this maintenance event?"
-    );
-    if (shouldDelete) {
-      await deleteMaintenanceEvents([selectedMaintenanceEvent]);
-    }
+    pendingRecurringDeletion = null;
+    $("#deleteRecurringEventsTitle").textContent = "Delete event?";
+    $("#deleteRecurringEventsMessage").textContent =
+      "Are you sure you want to delete this maintenance event?";
+    $("#confirmDeleteThisEvent").textContent = "Delete event";
+    $("#confirmDeleteAllRecurringEvents").hidden = true;
+    $("#deleteRecurringEventsModal").hidden = false;
+    $("#eventDetailsModal").hidden = true;
     return;
   }
 
@@ -2041,13 +2095,13 @@ document.addEventListener("click", async event => {
     return;
   }
 
-  if (event.target.closest("#deleteThisRecurringEvent")) {
+  if (event.target.closest("#confirmDeleteThisEvent")) {
     if (!selectedMaintenanceEvent) return;
     await deleteMaintenanceEvents([selectedMaintenanceEvent]);
     return;
   }
 
-  if (event.target.closest("#deleteAllRecurringEvents")) {
+  if (event.target.closest("#confirmDeleteAllRecurringEvents")) {
     if (!pendingRecurringDeletion) return;
     await deleteMaintenanceEvents(pendingRecurringDeletion, true);
     return;
@@ -2645,6 +2699,7 @@ $("#openApplianceModal").addEventListener("click", () => {
 
 $("#viewMaintenanceHistoryButton").addEventListener("click", () => {
   maintenanceApplianceFilter = selectedAppliance?.id || null;
+  maintenanceHistoryFromAppliance = true;
 
   navigate("maintenance");
 
@@ -2656,6 +2711,10 @@ $("#viewMaintenanceHistoryButton").addEventListener("click", () => {
   });
 
   renderEvents();
+});
+
+$("#backToApplianceHistoryButton").addEventListener("click", () => {
+  navigate("appliance-details");
 });
 
 
