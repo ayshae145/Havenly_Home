@@ -1839,8 +1839,13 @@ function showMaxEventProposal(messageRow, proposal) {
 function showMaxApplianceProposal(messageRow, proposal) {
   const bubble = messageRow.querySelector(".chat-bubble");
 
+  // Only display one appliance proposal per Max response.
+  if (bubble.querySelector(".max-appliance-proposal")) {
+    return;
+  }
+
   const card = document.createElement("div");
-  card.className = "max-event-proposal";
+card.className = "max-event-proposal max-appliance-proposal";
 
   const title = document.createElement("strong");
   title.textContent = "Proposed appliance";
@@ -2038,23 +2043,6 @@ if (data.proposedAppliance) {
     data.proposedAppliance
   );
 }
-
-if (data.proposedAppliance) {
-  console.log("Displaying appliance proposal:", data.proposedAppliance);
-
-  showMaxApplianceProposal(
-    pendingMessage,
-    data.proposedAppliance
-  );
-}
-
-if (data.proposedAppliance) {
-  showMaxApplianceProposal(
-    pendingMessage,
-    data.proposedAppliance
-  );
-}
-
     maxConversation = [
       ...nextConversation,
       {
