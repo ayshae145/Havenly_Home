@@ -753,22 +753,38 @@ renderMiniEvents();
 function renderEvents() {
   const sortedEvents = events
     .filter(event =>
-      new Date(event.date + "T12:00:00").getFullYear() ===
-        calendarMonth.getFullYear() &&
-      new Date(event.date + "T12:00:00").getMonth() ===
-        calendarMonth.getMonth() &&
-      (!maintenanceApplianceFilter ||
-        String(event.applianceId) === String(maintenanceApplianceFilter))
+      !maintenanceApplianceFilter ||
+      String(event.applianceId) === String(maintenanceApplianceFilter)
     )
     .sort((first, second) => first.date.localeCompare(second.date));
 
   $("#listMonthCount").textContent =
-    sortedEvents.length + " maintenance " +
-    (sortedEvents.length === 1 ? "event" : "events") + " this month";
+  sortedEvents.length + " maintenance " +
+  (sortedEvents.length === 1 ? "event" : "events") + " total";
 
   $("#eventList").innerHTML = sortedEvents
-    .map(event => {
-      const date = formatDate(event.date);
+    .map((event, index) => {
+  const date = formatDate(event.date);
+
+  const currentMonth = event.date.slice(0, 7);
+  const previousMonth = index > 0
+    ? sortedEvents[index - 1].date.slice(0, 7)
+    : null;
+
+  const showMonthHeader = currentMonth !== previousMonth;
+
+  const monthTitle = new Date(
+    event.date + "T12:00:00"
+  ).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric"
+  });
+
+  const monthHeader = showMonthHeader
+    ? '<div class="sticky-month-header">' +
+        '<span>' + monthTitle + '</span>' +
+      '</div>'
+    : '';
 
       const linkedAppliance = appliances.find(
         appliance => String(appliance.id) === String(event.applianceId)
@@ -790,6 +806,7 @@ function renderEvents() {
   '">✓</button>';
 
       return (
+        monthHeader +
         '<div class="event-card" data-list-event="' + eventIndex + '">' +
           '<div class="event-card-date">' +
             "<span>" + date.month + "</span>" +
