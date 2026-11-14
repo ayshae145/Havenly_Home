@@ -1981,16 +1981,40 @@ function showMaxEventChangeProposal(messageRow, proposal) {
   const bubble = messageRow.querySelector(".chat-bubble");
   if (!bubble || bubble.querySelector(".max-event-change-proposal")) return;
 
-  const target = events.find(item => String(item.id) === String(proposal.event_id));
+   const target = events.find(item => String(item.id) === String(proposal.event_id));
+
   if (!target || !["edit", "delete"].includes(proposal.action)) {
-    addChatMessage("I couldn't find that event in your current calendar. Please refresh and try again.", "max");
+    addChatMessage(
+      "I couldn't find that event in your current calendar. Please refresh and try again.",
+      "max"
+    );
+    console.warn("Max event proposal target missing or invalid:", proposal, events);
     return;
   }
-  const updates = proposal.updates || {};
-  const allowed = ["name", "category", "appliance_id", "event_date", "event_time", "description", "status"];
-  const changed = Object.keys(updates);
-  if (proposal.action === "edit" && (!changed.length || changed.some(key => !allowed.includes(key)))) return;
 
+  const updates = proposal.updates || {};
+  const allowed = [
+    "name",
+    "category",
+    "appliance_id",
+    "event_date",
+    "event_time",
+    "description",
+    "status"
+  ];
+  const changed = Object.keys(updates);
+
+  if (
+    proposal.action === "edit" &&
+    (!changed.length || changed.some(key => !allowed.includes(key)))
+  ) {
+    addChatMessage(
+      "I couldn't prepare a valid confirmation card for that change. Please ask me to propose it again.",
+      "max"
+    );
+    console.warn("Max event proposal missing or invalid updates:", proposal);
+    return;
+  }
   const card = document.createElement("div");
   card.className = "max-event-proposal max-event-change-proposal";
   const heading = document.createElement("strong");
@@ -2208,12 +2232,15 @@ async function askMax(text) {
       );
     }
 
-    if (data.proposedEventChange) {
-      showMaxEventChangeProposal(
-        pendingMessage,
-        data.proposedEventChange
-      );
-    }
+  if (data.proposedEventChange) {
+  // Refresh calendar data before matching the proposed event.
+  await loadMaintenanceEvents();
+
+  showMaxEventChangeProposal(
+    pendingMessage,
+    data.proposedEventChange
+  );
+}
 
     maxConversation = [
       ...nextConversation,
