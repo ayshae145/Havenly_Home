@@ -2320,11 +2320,75 @@ async function askMax(text) {
 }
 
 
-if (Array.isArray(data.recommendedProfessionals)) {
-  showMaxProfessionalRecommendations(
-    pendingMessage,
-    data.recommendedProfessionals
+if (
+  Array.isArray(data.recommendedProfessionals) &&
+  data.recommendedProfessionals.length > 0
+) {
+  const matches = data.recommendedProfessionals.filter(
+    match => match?.place && typeof match.place.id === "string"
   );
+
+  if (matches.length > 0) {
+    const bubble = pendingMessage.querySelector(".chat-bubble");
+    const card = document.createElement("div");
+    card.className = "max-event-proposal";
+
+    const title = document.createElement("strong");
+    title.textContent = "Recommended professionals";
+    card.appendChild(title);
+
+    for (const match of matches) {
+      const place = match.place;
+
+      const item = document.createElement("div");
+      item.style.cssText =
+        "padding:12px 0;border-top:1px solid #d4e8da;";
+
+      const name = document.createElement("strong");
+      name.textContent =
+        place.displayName?.text || "Local professional";
+
+      const details = document.createElement("p");
+
+      const googleText = typeof place.rating === "number"
+        ? `Google: ★ ${place.rating.toFixed(1)} (${place.userRatingCount ?? 0} reviews)`
+        : "Google: No rating available";
+
+      const havenlyText = match.havenlyRatingsAvailable === false
+        ? "Havenly: Ratings unavailable"
+        : match.havenlyReviewCount > 0 &&
+          typeof match.havenlyRating === "number"
+          ? `Havenly: ★ ${match.havenlyRating.toFixed(1)} (${match.havenlyReviewCount} reviews)`
+          : "Havenly: No reviews yet";
+
+      details.textContent = [
+        place.formattedAddress || "",
+        googleText,
+        havenlyText
+      ].filter(Boolean).join("\n");
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "outline-button";
+      button.textContent = "View profile";
+
+      button.addEventListener("click", () => {
+        proResults = matches.map(match => match.place);
+        proSearchLabel = "Recommended by Maintenance Max";
+
+        renderProfessionals();
+        openProfile(place.id);
+      });
+
+      item.append(name, details, button);
+      card.appendChild(item);
+    }
+
+    bubble.appendChild(card);
+
+    $("#chatWindow").scrollTop =
+      $("#chatWindow").scrollHeight;
+  }
 }
 
 
