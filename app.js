@@ -1349,6 +1349,30 @@ function safeWebUrl(value) {
   return /^https?:\/\//i.test(value || "") ? value : "";
 }
 
+
+/* =========================================================
+   Professional interaction tracking
+   ========================================================= */
+
+async function trackProfessionalInteraction(placeId, eventType) {
+  if (!placeId) return;
+
+  const { error } = await supabaseClient
+    .from("professional_interactions")
+    .insert({
+      place_id: placeId,
+      event_type: eventType
+    });
+
+  if (error) {
+    console.error(
+      "Professional interaction tracking failed:",
+      error
+    );
+  }
+}
+
+
 // Draw the latest search results (or the loading / empty states).
 function renderProfessionals() {
   const list = $("#professionalList");
@@ -1478,6 +1502,8 @@ function openProfile(placeId) {
   const place = proResults.find(item => item.id === placeId);
   if (!place) return;
 
+  void trackProfessionalInteraction(place.id, "profile_view");
+
   currentPlace = place;
   selectedStars = 0;
   updateStars();
@@ -1513,6 +1539,18 @@ function openProfile(placeId) {
   navigate("professional-profile");
   loadHavenlyReviews(place.id);
 }
+
+
+// Track when a user visits a professional's external website.
+$("#profWebsite").addEventListener("click", () => {
+  if (currentPlace) {
+    void trackProfessionalInteraction(
+      currentPlace.id,
+      "website_click"
+    );
+  }
+});
+
 
 // Show reviews that Havenly users left for this business.
 async function loadHavenlyReviews(placeId) {
@@ -3699,15 +3737,35 @@ $("#serviceLocation").addEventListener("keydown", event => {
 });
 
 // Open a professional's profile when the View Profile button is clicked.
-$("#professionalList").addEventListener("click", event => {
-  const button = event.target.closest("[data-view-pro]");
 
-  if (!button) {
+$("#professionalList").addEventListener("click", event => {
+
+  // Track clicks on a professional's Call button.
+  const callLink = event.target.closest('a[href^="tel:"]');
+
+  if (callLink) {
+    const viewButton = callLink
+      .closest(".pro-card")
+      ?.querySelector("[data-view-pro]");
+
+    if (viewButton) {
+      void trackProfessionalInteraction(
+        viewButton.dataset.viewPro,
+        "call_click"
+      );
+    }
+
     return;
   }
 
-  openProfile(button.dataset.viewPro);
+  // Open the professional's Havenly profile.
+  const button = event.target.closest("[data-view-pro]");
+
+  if (button) {
+    openProfile(button.dataset.viewPro);
+  }
 });
+
 
 // Allow users to choose a star rating for their review.
 $$("#starInput button").forEach((button, index) => {
