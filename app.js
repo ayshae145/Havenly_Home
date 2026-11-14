@@ -2165,6 +2165,83 @@ function showMaxEventChangeProposal(messageRow, proposal) {
   $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
 }
 
+
+/* =========================================================
+   Maintenance Max professional recommendations
+   ========================================================= */
+
+function showMaxProfessionalRecommendations(messageRow, matches) {
+  if (!matches.length) return;
+
+  const bubble = messageRow.querySelector(".chat-bubble");
+  const card = document.createElement("div");
+  card.className = "max-event-proposal";
+
+  const heading = document.createElement("strong");
+  heading.textContent = "Recommended professionals";
+  card.appendChild(heading);
+
+  for (const match of matches) {
+    const place = match.place;
+
+    if (!place || typeof place.id !== "string") {
+      continue;
+    }
+
+    const item = document.createElement("div");
+    item.style.cssText =
+      "border-top:1px solid #d4e8da;padding:12px 0;";
+
+    const name = document.createElement("strong");
+    name.textContent =
+      place.displayName?.text || "Local professional";
+    item.appendChild(name);
+
+    const details = document.createElement("p");
+
+    const google =
+      typeof place.rating === "number"
+        ? `Google: ★ ${place.rating.toFixed(1)} (${place.userRatingCount || 0} reviews)`
+        : "Google: No rating available";
+
+    const havenly = !match.havenlyRatingsAvailable
+      ? "Havenly: Ratings unavailable"
+      : match.havenlyReviewCount
+        ? `Havenly: ★ ${Number(match.havenlyRating).toFixed(1)} (${match.havenlyReviewCount} reviews)`
+        : "Havenly: No reviews yet";
+
+    details.textContent =
+      `${place.formattedAddress || ""}\n${google}\n${havenly}`;
+
+    item.appendChild(details);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "outline-button";
+    button.style.cssText =
+      "padding:8px 12px;border-radius:8px;margin-top:8px;";
+    button.textContent = "View profile";
+
+    button.addEventListener("click", () => {
+      // Reuse the existing Havenly professional profile page.
+      proResults = matches.map(match => match.place);
+      proSearchLabel = "Recommended by Maintenance Max";
+
+      renderProfessionals();
+      openProfile(place.id);
+    });
+
+    item.appendChild(button);
+    card.appendChild(item);
+  }
+
+  bubble.appendChild(card);
+
+  $("#chatWindow").scrollTop =
+    $("#chatWindow").scrollHeight;
+}
+
+
  // Prevent overlapping AI requests.
 let maxIsResponding = false;
 
@@ -2241,6 +2318,15 @@ async function askMax(text) {
     data.proposedEventChange
   );
 }
+
+
+if (Array.isArray(data.recommendedProfessionals)) {
+  showMaxProfessionalRecommendations(
+    pendingMessage,
+    data.recommendedProfessionals
+  );
+}
+
 
     maxConversation = [
       ...nextConversation,
