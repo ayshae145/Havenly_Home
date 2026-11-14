@@ -1,3 +1,4 @@
+
 /* =========================================================
    Havenly app logic
    =========================================================
@@ -867,7 +868,7 @@ async function toggleMaintenanceCompletion(maintenanceEvent) {
    Appliance loading and display
    ========================================================= */
 
-// Load the signed-in user's appliance records from Supabase.
+ // Load the signed-in user's appliance records from Supabase.
 async function loadAppliances() {
   appliancesLoading = true;
   renderAppliances();
@@ -1192,8 +1193,8 @@ openModal("applianceModal");
   });
 }
 
-// Fill the appliance detail page and navigate to it.
-// Find the selected appliance by its unique database ID.
+ // Fill the appliance detail page and navigate to it.
+ // Find the selected appliance by its unique database ID.
 function openAppliance(applianceId) {
   selectedAppliance = appliances.find(
     appliance => String(appliance.id) === String(applianceId)
@@ -1207,7 +1208,7 @@ function openAppliance(applianceId) {
   $("#maintenanceRecommendationResult").hidden = true;
 
   $("#maintenanceRecommendationMessage").textContent =
-  "Select “Get a suggestion” to receive a maintenance recommendation.";
+    "Select “Get a suggestion” to receive a maintenance recommendation.";
 
   sessionStorage.setItem(
     "selectedApplianceId",
@@ -1215,11 +1216,10 @@ function openAppliance(applianceId) {
   );
 
   $("#editDetailApplianceButton").disabled = false;
-
   $("#deleteDetailApplianceButton").disabled = false;
 
   $("#detailName").textContent = selectedAppliance.name;
-    const applianceDetails = [];
+  const applianceDetails = [];
 
   if (selectedAppliance.brand) {
     applianceDetails.push(selectedAppliance.brand);
@@ -1240,9 +1240,7 @@ function openAppliance(applianceId) {
     "appliance-large-icon " + selectedAppliance.tone;
   $("#detailIcon").textContent = selectedAppliance.icon;
 
-  // Enable deletion after an appliance has been selected.
   $("#deleteDetailApplianceButton").disabled = false;
-
   $("#maintenanceRecommendationDisclaimer").hidden = true;
 
   navigate("appliance-details");
@@ -1464,7 +1462,10 @@ async function findProfessionals() {
     console.error("Professional search error:", error);
     proResults = [];
     proSearchLabel = "";
-    showToast("Search failed", "We couldn't load professionals. Please try again.");
+    showToast(
+      "Search failed",
+      "We couldn't load professionals. Please try again."
+    );
   } finally {
     proSearching = false;
     $("#findProfessionals").disabled = false;
@@ -1489,7 +1490,8 @@ function openProfile(placeId) {
   $("#profType").textContent =
     (place.primaryTypeDisplayName?.text || "Local professional").toUpperCase();
   $("#profGoogleRating").textContent = place.rating
-    ? "★ " + place.rating + " · " + (place.userRatingCount ?? 0) + " Google reviews"
+    ? "★ " + place.rating + " · " +
+      (place.userRatingCount ?? 0) + " Google reviews"
     : "No Google ratings";
   $("#profAddress").textContent = place.formattedAddress || "";
 
@@ -1678,7 +1680,6 @@ function addChatMessage(text, type) {
   return row;
 }
 
-// Respond to the user's prompt with the app's current sample guidance.
 // Conversation history for the current page session.
 let maxConversation = [];
 let savedMaxConversationId = null;
@@ -1687,6 +1688,7 @@ let maxConversationHasUnsavedChanges = false;
 // Show an AI-proposed event without saving it yet.
 function showMaxEventProposal(messageRow, proposal) {
   const bubble = messageRow.querySelector(".chat-bubble");
+  if (bubble.querySelector(".max-event-proposal")) return;
 
   const card = document.createElement("div");
   card.className = "max-event-proposal";
@@ -1845,7 +1847,7 @@ function showMaxApplianceProposal(messageRow, proposal) {
   }
 
   const card = document.createElement("div");
-card.className = "max-event-proposal max-appliance-proposal";
+  card.className = "max-event-proposal max-appliance-proposal";
 
   const title = document.createElement("strong");
   title.textContent = "Proposed appliance";
@@ -1901,7 +1903,6 @@ card.className = "max-event-proposal max-appliance-proposal";
           typeof value !== "string" ||
           !/^\d{4}-\d{2}-\d{2}$/.test(value)
         ) return false;
-
         const date = new Date(value + "T12:00:00Z");
         return !Number.isNaN(date.getTime()) &&
           date.toISOString().slice(0, 10) === value;
@@ -1974,8 +1975,173 @@ card.className = "max-event-proposal max-appliance-proposal";
   $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
 }
 
+// The next section begins with showMaxEventChangeProposal().
 
-// Prevent overlapping AI requests.
+function showMaxEventChangeProposal(messageRow, proposal) {
+  const bubble = messageRow.querySelector(".chat-bubble");
+  if (!bubble || bubble.querySelector(".max-event-change-proposal")) return;
+
+  const target = events.find(item => String(item.id) === String(proposal.event_id));
+  if (!target || !["edit", "delete"].includes(proposal.action)) {
+    addChatMessage("I couldn't find that event in your current calendar. Please refresh and try again.", "max");
+    return;
+  }
+  const updates = proposal.updates || {};
+  const allowed = ["name", "category", "appliance_id", "event_date", "event_time", "description", "status"];
+  const changed = Object.keys(updates);
+  if (proposal.action === "edit" && (!changed.length || changed.some(key => !allowed.includes(key)))) return;
+
+  const card = document.createElement("div");
+  card.className = "max-event-proposal max-event-change-proposal";
+  const heading = document.createElement("strong");
+  heading.textContent = proposal.action === "delete" ? "Delete maintenance event?" : "Edit maintenance event?";
+  const summary = document.createElement("p");
+  const valueLabel = (key, value) => key === "appliance_id"
+    ? (appliances.find(ap => String(ap.id) === String(value))?.name || "No appliance")
+    : (value == null || value === "" ? "Not specified" : String(value));
+  summary.textContent = [
+    "Event: " + target.name,
+    "Date: " + target.date,
+    "Time: " + (target.timeValue || "Not specified"),
+    ...changed.map(key => {
+      const oldValue = key === "event_date" ? target.date :
+        key === "event_time" ? target.timeValue :
+        key === "appliance_id" ? target.applianceId : target[key];
+      return key.replaceAll("_", " ") + ": " + valueLabel(key, oldValue) + " → " + valueLabel(key, updates[key]);
+    })
+  ].join("\n");
+
+  const series = getRecurringSeriesEvents(target);
+  const seriesFrequency = getRecurringSeriesFrequency(series);
+  // The app infers recurring series by matching event details and dates.
+  // Require an unambiguous, regular cadence before offering series-wide changes.
+  const reliableSeries = series.length > 1 && Boolean(seriesFrequency);
+  const scopeWrap = document.createElement("div");
+  let scopeSelect = null;
+  if (reliableSeries) {
+    const scopeLabel = document.createElement("label");
+    scopeLabel.textContent = "Apply to: ";
+    scopeSelect = document.createElement("select");
+    [["single", "This occurrence only"], ["series", "Entire detected series (" + series.length + " events)"]]
+      .forEach(([value, text]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = text;
+        scopeSelect.appendChild(option);
+      });
+    scopeLabel.appendChild(scopeSelect);
+    scopeWrap.appendChild(scopeLabel);
+  }
+  const actions = document.createElement("div");
+  actions.className = "max-proposal-actions";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "button button-ghost";
+  cancel.textContent = "Cancel";
+  const confirm = document.createElement("button");
+  confirm.type = "button";
+  confirm.className = "button button-primary";
+  confirm.textContent = proposal.action === "delete" ? "Confirm delete" : "Confirm changes";
+  cancel.addEventListener("click", () => {
+    card.remove();
+    addChatMessage("Canceled. No events were changed.", "max");
+  });
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
+    cancel.disabled = true;
+    if (scopeSelect) scopeSelect.disabled = true;
+    const previousLabel = confirm.textContent;
+    confirm.textContent = "Saving...";
+    try {
+      const { data: userData, error: authError } = await supabaseClient.auth.getUser();
+      if (authError || !userData.user) throw authError || new Error("Please sign in.");
+      const selected = scopeSelect?.value === "series" ? series : [target];
+      const ids = selected.map(ev => ev.id);
+      const { data: current, error: readError } = await supabaseClient
+        .from("maintenance_events")
+        .select("id,name,category,appliance_id,event_date,event_time,description,status")
+        .eq("user_id", userData.user.id).in("id", ids);
+      if (readError) throw readError;
+      if (!current || current.length !== ids.length) throw new Error("Some events no longer exist. Refresh and try again.");
+      const original = proposal.original;
+      const actual = current.find(ev => String(ev.id) === String(target.id));
+      const originalKeys = ["name", "category", "appliance_id", "event_date", "event_time", "description", "status"];
+      if (!original || !actual || originalKeys.some(key => String(actual[key] ?? "") !== String(original[key] ?? ""))) {
+        throw new Error("This event has changed since Max proposed the action. Please ask Max again.");
+      }
+      // Protect inferred recurring-series membership from stale data.
+      if (ids.length > 1 && current.some(ev => {
+        const local = selected.find(item => String(item.id) === String(ev.id));
+        return !local || ev.name !== local.name || ev.category !== local.category ||
+          String(ev.appliance_id ?? "") !== String(local.applianceId ?? "") ||
+          ev.event_date !== local.date || String(ev.event_time ?? "") !== String(local.timeValue ?? "") ||
+          String(ev.description ?? "") !== String(local.description ?? "");
+      })) throw new Error("The recurring series changed. Please refresh and try again.");
+
+      if (proposal.action === "delete") {
+        const { data: deleted, error } = await supabaseClient.from("maintenance_events")
+          .delete().eq("user_id", userData.user.id).in("id", ids).select("id");
+        if (error) throw error;
+        if ((deleted || []).length !== ids.length) throw new Error("Not all selected events were deleted. Refresh your calendar.");
+      } else {
+        const validDate = value => {
+          if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+          const date = new Date(value + "T12:00:00Z");
+          return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+        };
+        if ("name" in updates && (typeof updates.name !== "string" || !updates.name.trim() || updates.name.length > 150)) throw new Error("Invalid event name.");
+        if ("category" in updates && !["Kitchen", "Laundry", "HVAC", "Plumbing", "General"].includes(updates.category)) throw new Error("Invalid category.");
+        if ("event_date" in updates && !validDate(updates.event_date)) throw new Error("Invalid event date.");
+        if ("event_time" in updates && updates.event_time !== null && (typeof updates.event_time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(updates.event_time))) throw new Error("Invalid event time.");
+        if ("description" in updates && (typeof updates.description !== "string" || updates.description.length > 2000)) throw new Error("Invalid description.");
+        if ("status" in updates && !["Upcoming", "Completed"].includes(updates.status)) throw new Error("Invalid event status.");
+        if ("appliance_id" in updates && updates.appliance_id !== null) {
+          const { data: owned, error } = await supabaseClient.from("appliances")
+            .select("appliance_id").eq("user_id", userData.user.id)
+            .eq("appliance_id", updates.appliance_id).maybeSingle();
+          if (error) throw error;
+          if (!owned) throw new Error("The selected appliance is no longer available.");
+        }
+        let dateOffset = 0;
+        if ("event_date" in updates && ids.length > 1) {
+          const start = Date.parse(target.date + "T12:00:00Z");
+          const end = Date.parse(updates.event_date + "T12:00:00Z");
+          dateOffset = Math.round((end - start) / 86400000);
+        }
+        // Each update is scoped to its exact row and signed-in user.
+        // If one fails, report it; do not claim an atomic series edit.
+        for (const ev of selected) {
+          const changes = { ...updates };
+          if ("event_date" in updates && ids.length > 1) {
+            const shifted = new Date(Date.parse(ev.date + "T12:00:00Z") + dateOffset * 86400000);
+            changes.event_date = shifted.toISOString().slice(0, 10);
+          }
+          const { data: updated, error } = await supabaseClient.from("maintenance_events")
+            .update(changes).eq("user_id", userData.user.id).eq("id", ev.id).select("id").maybeSingle();
+          if (error) throw error;
+          if (!updated) throw new Error("An event was not updated. Refresh and check the calendar.");
+        }
+      }
+      card.remove();
+      await loadMaintenanceEvents();
+      addChatMessage(proposal.action === "delete" ? "Event deletion confirmed and saved." : "Event changes confirmed and saved.", "max");
+      showToast("Maintenance Log updated", "Your confirmed changes have been saved.");
+    } catch (error) {
+      console.error("Max event change error:", error);
+      showToast("Unable to complete change", error.message || "Please try again.");
+      confirm.disabled = false;
+      cancel.disabled = false;
+      if (scopeSelect) scopeSelect.disabled = false;
+      confirm.textContent = previousLabel;
+    }
+  });
+  actions.append(cancel, confirm);
+  card.append(heading, summary, scopeWrap, actions);
+  bubble.appendChild(card);
+  $("#chatWindow").scrollTop = $("#chatWindow").scrollHeight;
+}
+
+ // Prevent overlapping AI requests.
 let maxIsResponding = false;
 
 async function askMax(text) {
@@ -2028,21 +2194,27 @@ async function askMax(text) {
       ".chat-bubble"
     ).textContent = data.reply;
 
-if (data.proposedEvent) {
-  showMaxEventProposal(
-    pendingMessage,
-    data.proposedEvent
-  );
-}
+    if (data.proposedEvent) {
+      showMaxEventProposal(
+        pendingMessage,
+        data.proposedEvent
+      );
+    }
 
-if (data.proposedAppliance) {
-  console.log("Displaying appliance proposal:", data.proposedAppliance);
+    if (data.proposedAppliance) {
+      showMaxApplianceProposal(
+        pendingMessage,
+        data.proposedAppliance
+      );
+    }
 
-  showMaxApplianceProposal(
-    pendingMessage,
-    data.proposedAppliance
-  );
-}
+    if (data.proposedEventChange) {
+      showMaxEventChangeProposal(
+        pendingMessage,
+        data.proposedEventChange
+      );
+    }
+
     maxConversation = [
       ...nextConversation,
       {
@@ -2073,7 +2245,7 @@ if (data.proposedAppliance) {
 
 // Handle page links, modal close buttons, and backdrop clicks in one place.
 document.addEventListener("click", async event => {
-    const homeEventCard = event.target.closest("[data-home-event]");
+  const homeEventCard = event.target.closest("[data-home-event]");
 
   if (homeEventCard && !event.target.closest("[data-home-complete]")) {
     showCalendarEventDetails(
@@ -2081,7 +2253,8 @@ document.addEventListener("click", async event => {
     );
     return;
   }
-    const listEventCard = event.target.closest("[data-list-event]");
+
+  const listEventCard = event.target.closest("[data-list-event]");
 
   if (listEventCard && !event.target.closest("[data-complete]")) {
     showCalendarEventDetails(
@@ -2089,6 +2262,7 @@ document.addEventListener("click", async event => {
     );
     return;
   }
+
   const moreEventsButton = event.target.closest("[data-calendar-more]");
   if (moreEventsButton) {
     showCalendarDayEvents(moreEventsButton.dataset.calendarMore);
@@ -2112,16 +2286,21 @@ document.addEventListener("click", async event => {
   }
 
   const homeCompletionButton = event.target.closest("[data-home-complete]");
+
   if (homeCompletionButton) {
     const maintenanceEvent =
       events[Number(homeCompletionButton.dataset.homeComplete)];
+
     if (!maintenanceEvent) return;
 
     homeCompletionButton.disabled = true;
+
     const homeEventCard = homeCompletionButton.closest(".mini-event");
+
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
+
     const completionAnimation = homeEventCard.animate(
       [
         { opacity: 1, transform: "translateX(0)" },
@@ -2137,23 +2316,32 @@ document.addEventListener("click", async event => {
     try {
       await completionAnimation.finished;
       await toggleMaintenanceCompletion(maintenanceEvent);
+
       showToast("Task updated", "Maintenance status updated.");
     } catch (error) {
       console.error("Error completing event from home:", error);
       completionAnimation.cancel();
       homeCompletionButton.disabled = false;
-      showToast("Error", error.message || "Unable to update event.");
+
+      showToast(
+        "Error",
+        error.message || "Unable to update event."
+      );
     }
+
     return;
   }
 
   if (event.target.closest("#toggleEventCompletionButton")) {
     const button = $("#toggleEventCompletionButton");
+
     if (!selectedMaintenanceEvent) return;
 
     button.disabled = true;
+
     try {
       await toggleMaintenanceCompletion(selectedMaintenanceEvent);
+
       selectedMaintenanceEvent = events.find(
         maintenanceEvent =>
           maintenanceEvent.id === selectedMaintenanceEvent.id
@@ -2161,20 +2349,26 @@ document.addEventListener("click", async event => {
 
       if (selectedMaintenanceEvent) {
         const status = $("#detailsEventStatus");
-        status.textContent = maintenanceEventStatus(selectedMaintenanceEvent);
+
+        status.textContent =
+          maintenanceEventStatus(selectedMaintenanceEvent);
+
         status.className =
           selectedMaintenanceEvent.status === "Completed"
             ? "details-status-completed"
             : "details-status-upcoming";
+
         button.textContent =
           selectedMaintenanceEvent.status === "Completed"
             ? "Mark not complete"
             : "Mark complete";
+
         button.className =
           "event-details-edit event-details-completion " +
           (selectedMaintenanceEvent.status === "Completed"
             ? "mark-not-complete"
             : "mark-complete");
+
         button.setAttribute(
           "aria-pressed",
           String(selectedMaintenanceEvent.status === "Completed")
@@ -2184,10 +2378,15 @@ document.addEventListener("click", async event => {
       showToast("Task updated", "Maintenance status updated.");
     } catch (error) {
       console.error("Error completing event:", error);
-      showToast("Error", error.message || "Unable to update event.");
+
+      showToast(
+        "Error",
+        error.message || "Unable to update event."
+      );
     } finally {
       button.disabled = false;
     }
+
     return;
   }
 
@@ -2197,6 +2396,7 @@ document.addEventListener("click", async event => {
       prepareEventForm(selectedMaintenanceEvent);
       openModal("eventModal");
     }
+
     return;
   }
 
@@ -2205,28 +2405,37 @@ document.addEventListener("click", async event => {
 
     const recurringSeries =
       getRecurringSeriesEvents(selectedMaintenanceEvent);
+
     if (recurringSeries.length > 1) {
       pendingRecurringDeletion = recurringSeries;
+
       $("#deleteRecurringEventsTitle").textContent =
         "Delete repeating event";
+
       $("#deleteRecurringEventsMessage").textContent =
         `This event is part of a series with ${recurringSeries.length} ` +
         "occurrences. Which would you like to delete?";
+
       $("#confirmDeleteThisEvent").textContent = "Delete this event";
       $("#confirmDeleteAllRecurringEvents").hidden = false;
       $("#deleteRecurringEventsModal").hidden = false;
       $("#eventDetailsModal").hidden = true;
+
       return;
     }
 
     pendingRecurringDeletion = null;
+
     $("#deleteRecurringEventsTitle").textContent = "Delete event?";
+
     $("#deleteRecurringEventsMessage").textContent =
       "Are you sure you want to delete this maintenance event?";
+
     $("#confirmDeleteThisEvent").textContent = "Delete event";
     $("#confirmDeleteAllRecurringEvents").hidden = true;
     $("#deleteRecurringEventsModal").hidden = false;
     $("#eventDetailsModal").hidden = true;
+
     return;
   }
 
@@ -2237,20 +2446,24 @@ document.addEventListener("click", async event => {
   ) {
     $("#deleteRecurringEventsModal").hidden = true;
     pendingRecurringDeletion = null;
+
     if (selectedMaintenanceEvent) {
       $("#eventDetailsModal").hidden = false;
     }
+
     return;
   }
 
   if (event.target.closest("#confirmDeleteThisEvent")) {
     if (!selectedMaintenanceEvent) return;
+
     await deleteMaintenanceEvents([selectedMaintenanceEvent]);
     return;
   }
 
   if (event.target.closest("#confirmDeleteAllRecurringEvents")) {
     if (!pendingRecurringDeletion) return;
+
     await deleteMaintenanceEvents(pendingRecurringDeletion, true);
     return;
   }
@@ -2264,6 +2477,7 @@ document.addEventListener("click", async event => {
     document.getElementById("eventDetailsModal").hidden = true;
     return;
   }
+
   const pageTarget = event.target.closest("[data-page]");
 
   if (pageTarget) {
@@ -2370,21 +2584,22 @@ async function loadSavedMaxConversations() {
     renameButton.type = "button";
     renameButton.className = "saved-max-rename";
     renameButton.textContent = "✏️";
-renameButton.title = "Rename conversation";
-renameButton.setAttribute("aria-label", "Rename conversation");
+    renameButton.title = "Rename conversation";
+    renameButton.setAttribute("aria-label", "Rename conversation");
 
     renameButton.addEventListener("click", () => {
-  renameSavedMaxConversation(
-    conversation.id,
-    conversation.title,
-    row
-  );
-});
+      renameSavedMaxConversation(
+        conversation.id,
+        conversation.title,
+        row
+      );
+    });
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "saved-max-delete";
     deleteButton.textContent = "🗑️";
-    deleteButton.title = "Delete conversation"; 
+    deleteButton.title = "Delete conversation";
     deleteButton.setAttribute(
       "aria-label",
       `Delete ${conversation.title}`
@@ -2712,6 +2927,7 @@ window.addEventListener("popstate", () => {
 /* =========================================================
    Main page controls
    ========================================================= */
+
 $("#editDetailApplianceButton").addEventListener("click", () => {
   if (!selectedAppliance) {
     return;
@@ -2983,6 +3199,7 @@ $("#eventForm").addEventListener("submit", async event => {
         maintenanceEventSeriesBeingEdited[
           maintenanceEventSeriesBeingEdited.length - 1
         ].date;
+
       const eventsToReschedule = maintenanceEventSeriesBeingEdited
         .filter(item => item.date >= selectedEvent.date)
         .sort((first, second) => first.date.localeCompare(second.date));
@@ -3266,57 +3483,64 @@ $("#categoryFilter").addEventListener("change", renderAppliances);
 $$("[data-prompt]").forEach(button => {
   button.addEventListener("click", () => {
     const prompt = button.dataset.prompt;
-    askMax(prompt);
+
+    $("#chatInput").value = prompt;
+    $("#chatInput").focus();
   });
 });
 
-// Ask Max about the appliance selected in the context panel.
-$$("[data-appliance]").forEach(button => {
-  button.addEventListener("click", () => {
-    askMax("I have a question about my " + button.dataset.appliance + ".");
-  });
-});
-
-// Send a message typed into the chat input.
-$("#chatForm").addEventListener("submit", event => {
+// Send a message when the user submits the chat form.
+$("#chatForm").addEventListener("submit", async event => {
   event.preventDefault();
 
   const input = $("#chatInput");
   const message = input.value.trim();
 
-  if (message) {
-    askMax(message);
-    input.value = "";
+  if (!message || maxIsResponding) {
+    return;
+  }
+
+  input.value = "";
+  await askMax(message);
+});
+
+// Search for professionals from the Professionals page.
+$("#findProfessionals").addEventListener("click", findProfessionals);
+
+$("#serviceNeed").addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    findProfessionals();
   }
 });
 
-// Search button and Enter key.
-$("#findProfessionals").addEventListener("click", findProfessionals);
-
-["#serviceNeed", "#serviceLocation"].forEach(selector => {
-  $(selector).addEventListener("keydown", event => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      findProfessionals();
-    }
-  });
+$("#serviceLocation").addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    findProfessionals();
+  }
 });
 
-// "View profile" buttons are created dynamically, so listen on the list.
+// Open a professional's profile when the View Profile button is clicked.
 $("#professionalList").addEventListener("click", event => {
   const button = event.target.closest("[data-view-pro]");
-  if (button) openProfile(button.dataset.viewPro);
+
+  if (!button) {
+    return;
+  }
+
+  openProfile(button.dataset.viewPro);
 });
 
-// Star rating and review submission.
+// Allow users to choose a star rating for their review.
 $$("#starInput button").forEach((button, index) => {
-  button.type = "button";
   button.addEventListener("click", () => {
     selectedStars = index + 1;
     updateStars();
   });
 });
 
+// Submit the Havenly review.
 $("#submitReview").addEventListener("click", submitReview);
 
 /* =========================================================
@@ -3573,6 +3797,7 @@ confirmDeleteButton.addEventListener("click", async () => {
       throw error;
     }
 
+
     if (!data?.success) {
       throw new Error(data?.error || "Account deletion failed.");
     }
@@ -3629,8 +3854,7 @@ async function handleSignOut() {
   appliances = [];
   appliancesLoading = true;
 
-
-    proResults = [];
+  proResults = [];
   proSearchLabel = "";
   currentPlace = null;
   $("#serviceLocation").value = "";
@@ -3748,15 +3972,15 @@ signupForm.addEventListener("submit", async event => {
   signupMessage.textContent = "Creating your account...";
 
   const { data, error } = await supabaseClient.auth.signUp({
-  email,
-  password,
-  options: {
-    data: {
-      first_name: firstName,
-      zip_code: zipCode
+    email,
+    password,
+    options: {
+      data: {
+        first_name: firstName,
+        zip_code: zipCode
+      }
     }
-  }
-});
+  });
 
   if (error) {
     signupMessage.textContent = error.message;
