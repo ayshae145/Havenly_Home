@@ -1760,3 +1760,31 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Scrollable Maintenance List View */
+#listView .event-list {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Hide month navigation in List View only */
+#listView .list-month-head {
+  display: none;
+}
+
+/* Sticky month headers in Maintenance List View */
+#listView .sticky-month-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  background: #f5f2ea;
+  padding: 14px 16px;
+
+  font-size: 16px;
+  font-weight: 700;
+  color: #395747;
+
+  border-radius: 10px;
+}
