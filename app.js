@@ -3130,26 +3130,36 @@ function clearMaxChat() {
 document.getElementById("saveMaxConversation")
   .addEventListener("click", saveMaxConversation);
 
-document.getElementById("newMaxConversation")
-  .addEventListener("click", () => {
-    if (maxIsResponding) {
-      alert("Please wait for Max to finish responding.");
-      return;
-    }
+function startNewMaxConversation() {
+  savedMaxConversationId = null;
+  maxConversation = [];
+  maxConversationHasUnsavedChanges = false;
 
-    if (
-      maxConversationHasUnsavedChanges &&
-      !confirm("Discard your unsaved conversation changes?")
-    ) {
-      return;
-    }
+  clearMaxChat();
+}
 
-    savedMaxConversationId = null;
-    maxConversation = [];
-    maxConversationHasUnsavedChanges = false;
+$("#newMaxConversation").addEventListener("click", () => {
+  if (maxIsResponding) {
+    alert("Please wait for Max to finish responding.");
+    return;
+  }
 
-    clearMaxChat();
-  });
+  if (maxConversationHasUnsavedChanges) {
+    openModal("newConversationModal");
+    return;
+  }
+
+  startNewMaxConversation();
+});
+
+$("#cancelNewConversation").addEventListener("click", () => {
+  closeModal("newConversationModal");
+});
+
+$("#confirmNewConversation").addEventListener("click", () => {
+  closeModal("newConversationModal");
+  startNewMaxConversation();
+});
 
 // Keep the visible page in sync when the browser Back or Forward button is used.
 window.addEventListener("popstate", () => {
