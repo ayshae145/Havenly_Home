@@ -1805,3 +1805,46 @@ body {
 #newConversationModal .button {
   font-size: 13px;
 }
+
+/* Place contact information across the profile page. */
+.contact-panel-wide {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 14px 24px;
+  margin-bottom: 17px;
+}
+
+.contact-panel-wide > .eyebrow {
+  grid-column: 1 / -1;
+}
+
+.contact-panel-wide .website-link {
+  align-self: center;
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* Show the review form and customer reviews side by side. */
+.profile-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 17px;
+}
+
+/* Stack the panels and contact items on narrower screens. */
+@media (max-width: 960px) {
+  .contact-panel-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .contact-panel-wide {
+    grid-template-columns: 1fr;
+  }
+}
