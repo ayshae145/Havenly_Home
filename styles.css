@@ -1912,3 +1912,116 @@ body {
     padding: 18px 0 0;
   }
 }
+
+/* Add the same breathing room used between other profile sections. */
+.contact-script-panel {
+  margin-bottom: 17px;
+  padding: 28px;
+}
+
+.contact-script-panel > div:first-child p {
+  margin: 8px 0 18px;
+}
+
+/* Space out the form controls. */
+#contactScriptForm {
+  display: grid;
+  gap: 12px;
+}
+
+#contactScriptForm > label {
+  margin: 0 0 -6px;
+  font-weight: 600;
+}
+
+/* Style the contact choices like a segmented view toggle. */
+.contact-method-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.contact-method-field legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.contact-method-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.contact-method-option:has(input:checked) {
+  border-color: var(--green);
+  background: #eef3ef;
+  color: var(--green);
+}
+
+.contact-method-option input {
+  accent-color: var(--green);
+  margin: 0;
+}
+
+.contact-method-option:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* Match the site's other form fields and dropdowns. */
+#contactAppliance,
+#contactHelpDescription,
+#contactScriptDraft {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+#contactAppliance {
+  min-height: 48px;
+}
+
+#contactHelpDescription {
+  min-height: 130px;
+  resize: vertical;
+}
+
+#contactAppliance:focus,
+#contactHelpDescription:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* Keep the draft button below the full-width description box. */
+#generateContactScriptButton {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+#contactScriptStatus {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .contact-script-panel {
+    padding: 22px;
+  }
+
+  .contact-method-option {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
