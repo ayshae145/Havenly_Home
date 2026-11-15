@@ -644,81 +644,96 @@
               </div>
             </div>
 
-            <div class="profile-grid">
-              <div class="profile-main">
-                <div class="panel">
-                  <div class="panel-heading">
-                    <div>
-                      <span class="eyebrow">WHAT CUSTOMERS SAY</span>
-                      <h3>Havenly reviews</h3>
-                    </div>
-                  </div>
+            <!-- Full-width contact information -->
+            <div class="panel contact-panel contact-panel-wide">
+              <span class="eyebrow">CONTACT &amp; HOURS</span>
 
-                  <div id="profHavenlyReviews"></div>
-                </div>
-
-                <div class="panel leave-review">
-                  <div>
-                    <span class="eyebrow">SHARE YOUR EXPERIENCE</span>
-                    <h3>Leave a review</h3>
-                  </div>
-
-                  <div class="star-input" id="starInput">
-                    <button type="button" aria-label="1 star">★</button>
-                    <button type="button" aria-label="2 stars">★</button>
-                    <button type="button" aria-label="3 stars">★</button>
-                    <button type="button" aria-label="4 stars">★</button>
-                    <button type="button" aria-label="5 stars">★</button>
-                  </div>
-
-                  <div class="review-fields">
-                    <input id="reviewService" placeholder="Service performed">
-                    <select id="reviewSatisfaction">
-                      <option>Very satisfied</option>
-                      <option>Satisfied</option>
-                      <option>Neutral</option>
-                      <option>Not Satisfied</option>
-                      <option>Poor Service</option>
-                    </select>
-                    <textarea id="reviewComment" placeholder="Tell us about your experience..."></textarea>
-                  </div>
-
-                  <button class="button button-primary" id="submitReview" type="button">
-                    Submit review
-                  </button>
+              <div class="contact-row">
+                <span>⌖</span>
+                <div>
+                  <strong id="profAddress"></strong>
                 </div>
               </div>
 
-              <aside class="profile-side">
-                <div class="panel contact-panel">
-                  <span class="eyebrow">CONTACT &amp; HOURS</span>
-
-                  <div class="contact-row">
-                    <span>⌖</span>
-                    <div>
-                      <strong id="profAddress"></strong>
-                    </div>
-                  </div>
-
-                  <div class="contact-row" id="profPhoneRow">
-                    <span>♧</span>
-                    <div>
-                      <strong id="profPhone"></strong>
-                      <small>Call or text</small>
-                    </div>
-                  </div>
-
-                  <div class="contact-row">
-                    <span>◷</span>
-                    <div>
-                      <strong id="profOpenNow"></strong>
-                      <small id="profHours"></small>
-                    </div>
-                  </div>
-
-                  <a href="#" class="website-link" id="profWebsite" target="_blank" rel="noopener noreferrer">Visit website ↗</a>
+              <div class="contact-row" id="profPhoneRow">
+                <span>♧</span>
+                <div>
+                  <strong id="profPhone"></strong>
+                  <small>Call or text</small>
                 </div>
-              </aside>
+              </div>
+
+              <div class="contact-row">
+                <span>◷</span>
+                <div>
+                  <strong id="profOpenNow"></strong>
+                  <small id="profHours"></small>
+                </div>
+              </div>
+
+              <a
+                href="#"
+                class="website-link"
+                id="profWebsite"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Visit website ↗
+              </a>
+            </div>
+
+            <!-- Review form and customer reviews sit side by side -->
+            <div class="profile-review-grid">
+              <div class="panel leave-review">
+                <div>
+                  <span class="eyebrow">SHARE YOUR EXPERIENCE</span>
+                  <h3>Leave a review</h3>
+                </div>
+
+                <div class="star-input" id="starInput">
+                  <button type="button" aria-label="1 star">★</button>
+                  <button type="button" aria-label="2 stars">★</button>
+                  <button type="button" aria-label="3 stars">★</button>
+                  <button type="button" aria-label="4 stars">★</button>
+                  <button type="button" aria-label="5 stars">★</button>
+                </div>
+
+                <div class="review-fields">
+                  <input id="reviewService" placeholder="Service performed">
+
+                  <select id="reviewSatisfaction">
+                    <option>Very satisfied</option>
+                    <option>Satisfied</option>
+                    <option>Neutral</option>
+                    <option>Not Satisfied</option>
+                    <option>Poor Service</option>
+                  </select>
+
+                  <textarea
+                    id="reviewComment"
+                    placeholder="Tell us about your experience..."
+                  ></textarea>
+                </div>
+
+                <button
+                  class="button button-primary"
+                  id="submitReview"
+                  type="button"
+                >
+                  Submit review
+                </button>
+              </div>
+
+              <div class="panel">
+                <div class="panel-heading">
+                  <div>
+                    <span class="eyebrow">WHAT CUSTOMERS SAY</span>
+                    <h3>Havenly reviews</h3>
+                  </div>
+                </div>
+
+                <div id="profHavenlyReviews"></div>
+              </div>
             </div>
           </section>
 
