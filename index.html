@@ -1184,8 +1184,6 @@
     </div>
 
     <!-- Supabase client library must load before app.js -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=3"></script>
     <div id="calendarDayModal" class="event-details-overlay" hidden>
       <div class="event-details-modal calendar-day-modal" role="dialog"
            aria-modal="true" aria-labelledby="calendarDayTitle">
@@ -1266,5 +1264,33 @@
     </div>
   </div>
 </div>
+<!-- New Conversation Confirmation Modal -->
+<div class="modal-backdrop" id="newConversationModal">
+  <div class="modal" role="dialog" aria-modal="true"
+       aria-labelledby="newConversationModalTitle">
+
+    <span class="eyebrow">MAINTENANCE MAX</span>
+    <h2 id="newConversationModalTitle">Start a new conversation?</h2>
+
+    <p class="modal-subtitle">
+      Your current conversation has unsaved changes.
+      Starting a new conversation will discard them.
+    </p>
+
+    <div class="modal-actions">
+      <button type="button" class="button button-ghost"
+              id="cancelNewConversation">
+        Cancel
+      </button>
+
+      <button type="button" class="button button-primary"
+              id="confirmNewConversation">
+        Start New Conversation
+      </button>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="app.js?v=3"></script>
   </body>
 </html>

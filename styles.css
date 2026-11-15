@@ -1788,3 +1788,20 @@ body {
 
   border-radius: 10px;
 }
+/* Maintenance Max - New Conversation Modal */
+#newConversationModal .modal {
+  max-width: 440px;
+}
+
+#newConversationModal .modal-subtitle {
+  line-height: 1.7;
+  margin-top: 12px;
+}
+
+#newConversationModal .modal-actions {
+  flex-wrap: wrap;
+}
+
+#newConversationModal .button {
+  font-size: 13px;
+}
