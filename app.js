@@ -1542,12 +1542,32 @@ function openProfile(placeId) {
   $("#profPhone").textContent = place.nationalPhoneNumber || "";
 
   const hours = place.regularOpeningHours;
-  $("#profOpenNow").textContent =
-    hours?.openNow === true ? "Open now" :
-    hours?.openNow === false ? "Closed now" : "Hours";
-  $("#profHours").textContent =
-    (hours?.weekdayDescriptions || []).join(" · ") || "Hours not listed";
 
+  $("#profOpenNow").textContent =
+    hours?.openNow === true
+      ? "Open now"
+      : hours?.openNow === false
+        ? "Closed now"
+        : "Hours";
+
+  // Add each day's hours as its own text-only line.
+  const hoursList = $("#profHours");
+  const weekdayHours = Array.isArray(hours?.weekdayDescriptions)
+    ? hours.weekdayDescriptions
+    : [];
+
+  hoursList.replaceChildren();
+
+  if (weekdayHours.length > 0) {
+    weekdayHours.forEach(dayHours => {
+      const line = document.createElement("div");
+      line.textContent = dayHours;
+      hoursList.append(line);
+    });
+  } else {
+    hoursList.textContent = "Hours not listed";
+  }
+  
   const website = $("#profWebsite");
   const url = safeWebUrl(place.websiteUri);
   website.hidden = !url;
