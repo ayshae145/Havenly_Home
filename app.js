@@ -3215,6 +3215,14 @@ $("#openEventModal").addEventListener("click", () => {
   openModal("eventModal");
 });
 
+$("#addApplianceEventButton").addEventListener("click", () => {
+  if (!selectedAppliance) return;
+
+  prepareEventForm();
+  $("#eventAppliance").value = String(selectedAppliance.id);
+  openModal("eventModal");
+});
+
 $("#floatingAdd").addEventListener("click", () => {
   prepareEventForm();
   openModal("eventModal");
