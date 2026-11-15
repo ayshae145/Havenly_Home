@@ -688,6 +688,103 @@
               </div>
             </div>
 
+            <!-- Form for drafting a professional contact message -->
+            <div class="panel contact-script-panel">
+              <div>
+                <span class="eyebrow">CONTACT THIS PROFESSIONAL</span>
+                <h3>Draft a message with AI</h3>
+                <p>
+                  Tell us what you need help with, and we’ll draft a
+                  professional message for you to review.
+                </p>
+              </div>
+
+              <form id="contactScriptForm">
+                <fieldset class="contact-method-field">
+                  <legend>How would you like to contact them?</legend>
+
+                  <label class="contact-method-option">
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="email"
+                      required
+                    >
+                    Email
+                  </label>
+
+                  <label class="contact-method-option">
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="text"
+                    >
+                    Text
+                  </label>
+
+                  <label class="contact-method-option">
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="call"
+                    >
+                    Phone call
+                  </label>
+                </fieldset>
+
+                <label for="contactAppliance">
+                  Connect an appliance (optional)
+                </label>
+                <select id="contactAppliance" name="applianceId">
+                  <option value="">No appliance</option>
+                </select>
+
+                <label for="contactHelpDescription">
+                  What do you need help with?
+                </label>
+                <textarea
+                  id="contactHelpDescription"
+                  name="helpDescription"
+                  rows="4"
+                  maxlength="1000"
+                  required
+                  placeholder="Briefly describe the issue or service you need."
+                ></textarea>
+
+                <button
+                  class="button button-primary"
+                  id="generateContactScriptButton"
+                  type="submit"
+                >
+                  Draft my message
+                </button>
+
+                <p id="contactScriptStatus" role="status" aria-live="polite"></p>
+              </form>
+
+              <div id="contactScriptResult" hidden>
+                <label for="contactScriptDraft">Your AI-drafted message</label>
+                <textarea
+                  id="contactScriptDraft"
+                  rows="8"
+                  spellcheck="true"
+                ></textarea>
+
+                <button
+                  class="button button-ghost"
+                  id="copyContactScriptButton"
+                  type="button"
+                >
+                  Copy draft
+                </button>
+
+                <p class="contact-script-disclaimer">
+                  AI-generated draft. Review it before sending; Havenly won’t
+                  contact the professional for you.
+                </p>
+              </div>
+            </div>
+
             <!-- Review form and customer reviews sit side by side -->
             <div class="profile-review-grid">
               <div class="panel leave-review">
