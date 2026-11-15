@@ -1848,3 +1848,8 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Stack both review panels at full width. */
+.profile-review-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
