@@ -1035,8 +1035,34 @@ async function removeAppliance(applianceId) {
   }
 }
 
+function populateContactAppliances() {
+  const select = $("#contactAppliance");
+  if (!select) return;
+
+  const previouslySelectedId = select.value;
+
+  select.replaceChildren(new Option("No appliance", ""));
+
+  appliances.forEach(appliance => {
+    const option = document.createElement("option");
+    option.value = String(appliance.id);
+    option.textContent = appliance.name;
+    select.append(option);
+  });
+
+  // Keep the user's selection when the dropdown is refreshed.
+  if (
+    appliances.some(
+      appliance => String(appliance.id) === previouslySelectedId
+    )
+  ) {
+    select.value = previouslySelectedId;
+  }
+}
+
 // Draw appliance cards, the loading state, or the first-appliance message.
 function renderAppliances() {
+  populateContactAppliances();
   const searchQuery = ($("#applianceSearch").value || "").toLowerCase();
   const category = $("#categoryFilter").value;
 
