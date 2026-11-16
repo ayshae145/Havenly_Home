@@ -3829,8 +3829,25 @@ document
       status.textContent = "Your draft is ready.";
     } catch (error) {
       console.error("Contact script error:", error);
-      status.textContent =
+
+      let message =
         error.message || "Could not create the draft. Please try again.";
+
+      if (error.context && typeof error.context.json === "function") {
+        try {
+          const responseBody = await error.context.json();
+          console.error("Edge Function response body:", responseBody);
+
+          message =
+            responseBody.error ||
+            responseBody.message ||
+            message;
+        } catch (parseError) {
+          console.error("Could not read the function response:", parseError);
+        }
+      }
+
+      status.textContent = message;
     } finally {
       submitButton.disabled = false;
     }
