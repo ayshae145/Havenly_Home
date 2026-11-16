@@ -3748,6 +3748,67 @@ $("#categoryFilter").addEventListener("change", renderAppliances);
 /* =========================================================
    Assistant and professional page controls
    ========================================================= */
+  
+document
+  .getElementById("contactScriptForm")
+  .addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const submitButton = document.getElementById(
+      "generateContactScriptButton"
+    );
+    const status = document.getElementById("contactScriptStatus");
+    const result = document.getElementById("contactScriptResult");
+    const draftBox = document.getElementById("contactScriptDraft");
+    const applianceSelect = document.getElementById("contactAppliance");
+
+    const contactMethod = form.elements.contactMethod.value;
+    const applianceName =
+      applianceSelect.value === ""
+        ? ""
+        : applianceSelect.selectedOptions[0].textContent.trim();
+
+    const professionalName =
+      document
+        .querySelector("#page-professional-profile .profile-title h1")
+        ?.textContent.trim() || "";
+
+    status.textContent = "Drafting your message…";
+    result.hidden = true;
+    submitButton.disabled = true;
+
+    try {
+      const { data, error } = await supabaseClient.functions.invoke(
+        "draft-contact-script",
+        {
+          body: {
+            contactMethod,
+            professionalName,
+            applianceName,
+            helpDescription: document
+              .getElementById("contactHelpDescription")
+              .value.trim(),
+          },
+        }
+      );
+
+      if (error) throw error;
+      if (!data?.draft) {
+        throw new Error(data?.error || "The function returned no draft.");
+      }
+
+      draftBox.value = data.draft;
+      result.hidden = false;
+      status.textContent = "Your draft is ready.";
+    } catch (error) {
+      console.error("Contact script error:", error);
+      status.textContent =
+        error.message || "Could not create the draft. Please try again.";
+    } finally {
+      submitButton.disabled = false;
+    }
+});
 
 // Handle the suggested Maintenance Max prompts.
 $$("[data-prompt]").forEach(button => {
