@@ -3853,6 +3853,25 @@ document
     }
 });
 
+$("#copyContactScriptButton").addEventListener("click", async () => {
+  const draft = $("#contactScriptDraft").value.trim();
+  const status = $("#contactScriptStatus");
+
+  if (!draft) {
+    status.textContent = "Generate a message first.";
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(draft);
+    status.textContent = "Draft copied to clipboard.";
+  } catch (error) {
+    console.error("Copy draft error:", error);
+    status.textContent =
+      "Could not copy automatically. Select the draft and copy it manually.";
+  }
+});
+
 // Handle the suggested Maintenance Max prompts.
 $$("[data-prompt]").forEach(button => {
   button.addEventListener("click", () => {
